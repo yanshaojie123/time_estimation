@@ -15,21 +15,25 @@ class Attr(nn.Module):
         for name, dim_in, dim_out in Attr.embed_dims:
             self.add_module(name + '_em', nn.Embedding(dim_in, dim_out))
 
-    def out_size(self):
-        sz = 0
-        for name, dim_in, dim_out in Attr.embed_dims:
-            sz += dim_out
-        # append total distance
-        return sz + 1
+    # def out_size(self):
+    #     sz = 0
+    #     for name, dim_in, dim_out in Attr.embed_dims:
+    #         sz += dim_out
+    #     # append total distance
+    #     return sz + 1
 
     def forward(self, attr):
+        '''
+
+        :param attr: {"driverID": (N*24000dim), "weekID": (N*7dim), "timeID": (N*1440dim)}
+        :return: N*(16+3+8+1)dim
+        '''
+
         em_list = []
         for name, dim_in, dim_out in Attr.embed_dims:
             embed = getattr(self, name + '_em')
             attr_t = attr[name].view(-1, 1)
-
             attr_t = torch.squeeze(embed(attr_t))
-
             em_list.append(attr_t)
 
         # dist = utils.normalize(attr['dist'], 'dist')  # todo: normalize
@@ -40,15 +44,15 @@ class Attr(nn.Module):
 
 
 class GeoConv(nn.Module):
-    def __init__(self, kernel_size, num_filter):
+    def __init__(self, kernel_size, num_filter, embedding_dim=16):
         super(GeoConv, self).__init__()
 
         self.kernel_size = kernel_size
         self.num_filter = num_filter
 
         self.state_em = nn.Embedding(2, 2)
-        self.process_coords = nn.Linear(4, 16)
-        self.conv = nn.Conv1d(16, self.num_filter, self.kernel_size)
+        self.process_coords = nn.Linear(4, embedding_dim)
+        self.conv = nn.Conv1d(embedding_dim, self.num_filter, self.kernel_size)
 
 
     def forward(self, traj, config):
@@ -241,7 +245,7 @@ class DeepTTE(nn.Module):
         self.alpha = alpha
 
         self.attr_net = Attr()
-        self.spatio_temporal = SpatioTemporal(attr_size=self.attr_net.out_size(),
+        self.spatio_temporal = SpatioTemporal(attr_size=self.attr_net.out_size(),  # todo: outsize
                                               kernel_size=self.kernel_size,
                                               num_filter=self.num_filter,
                                               pooling_method=self.pooling_method
@@ -259,7 +263,14 @@ class DeepTTE(nn.Module):
             elif name.find('.weight') != -1:
                 nn.init.xavier_uniform(param.data)
 
-    def forward(self, attr, traj, config, **kwargs):
+    def forward(self, attr, traj, config):
+        """
+
+        :param attr:
+        :param traj:
+        :param config:
+        :return:
+        """
         attr_t = self.attr_net(attr)
 
         # sptm_s: hidden sequence (B * T * F); sptm_l: lens (list of int); sptm_t: merged tensor after attention/mean pooling
@@ -271,7 +282,7 @@ class DeepTTE(nn.Module):
         if self.training:
             local_out = self.local_estimate(sptm_s[0])
             pred_dict, entire_loss = self.entire_estimate.eval_on_batch(entire_out, attr['time'], config['time_mean'],
-                                                                        config['time_std']
+                                                                        config['time_std'])
             mean, std = (self.kernel_size - 1) * config['time_gap_mean'], (self.kernel_size - 1) * config['time_gap_std']
 
             # get ground truth of each local path
@@ -282,4 +293,4 @@ class DeepTTE(nn.Module):
         else:
             pred_dict, entire_loss = self.entire_estimate.eval_on_batch(entire_out, attr['time'], config['time_mean'],
                                                                         config['time_std'])
-            return entire_out
+            return pred_dict, entire_loss

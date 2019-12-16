@@ -1,10 +1,4 @@
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import mean_absolute_error
-
-from scipy.stats import pearsonr
 import numpy as np
-import torch
-
 
 # 衡量模型的性能
 # def evaluate(y_predictions: np.ndarray, y_targets: np.ndarray, threshold: float = 0.5):
@@ -93,7 +87,7 @@ def masked_mape_np(preds, labels, null_val=np.nan):
 #     return loss
 
 
-def calculate_metrics(preds, labels, null_val=0.0, **kwargs):  # todo: delete one from this and evaluate()
+def calculate_metrics(preds, labels, args, null_val=0.0):  # todo: delete one from this and evaluate()
     """
     Calculate the MAE, MAPE, RMSE
     :param df_pred:
@@ -102,7 +96,7 @@ def calculate_metrics(preds, labels, null_val=0.0, **kwargs):  # todo: delete on
     :return:
     """
     try:
-        scaler = kwargs['scaler']
+        scaler = args.scaler
         preds = scaler.inverse_transform(preds)
         labels = scaler.inverse_transform(labels)
 

@@ -10,24 +10,19 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from utils.metric import calculate_metrics
-from utils.util import save_model, convert_to_gpu
+from utils.util import save_model
 
 
-def train_model(model: nn.Module,
-                data_loaders: Dict[str, DataLoader],
-                loss_func: callable,
-                optimizer,
-                num_epochs,
-                model_folder: str,
-                tensorboard_folder: str,
-                **kwargs):
+def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
+                loss_func: callable, optimizer: optim,
+                model_folder: str, tensorboard_folder: str,
+                args, **kwargs):
+    num_epochs = args.epochs
     phases = ['train', 'val', 'test']
 
     writer = SummaryWriter(tensorboard_folder)
 
     since = time.clock()
-
-    # loss_func = convert_to_gpu(loss_func)  # Todo
 
     save_dict, worst_rmse = {'model_state_dict': copy.deepcopy(model.state_dict()), 'epoch': 0}, 100000
 
@@ -47,20 +42,14 @@ def train_model(model: nn.Module,
                 steps, predictions, targets = 0, list(), list()
                 tqdm_loader = tqdm(enumerate(data_loaders[phase]))
                 for step, (features, truth_data) in tqdm_loader:
-                    # if step == 0 and epoch == 0:
-                    #     print(features.shape)  64, 60, 207, 2
-                    #     print(truth_data.shape)  64, 12, 207
-                    # print(truth_data)
-                    # print(features.shape)
-                    features = convert_to_gpu(features)
-                    truth_data = convert_to_gpu(truth_data)
-                    global_step = (epoch) * 2500 + steps/10
-                    kwargs['global_step'] = global_step
+                    features = features.to(args.device)
+                    truth_data = truth_data.to(args.device)
                     with torch.set_grad_enabled(phase == 'train'):
-                        outputs = model(features, **kwargs)
-                        # outputs = torch.squeeze(outputs)  # squeeze [batch-size, 1] to [batch-size]
-                        # print(outputs)
-                        loss = loss_func(truth=truth_data, predict=outputs)
+                        if args.lossinside:
+                            loss, outputs = model(features, truth_data, loss_func, **kwargs)
+                        else:
+                            outputs = model(features, **kwargs)
+                            loss = loss_func(truth=truth_data, predict=outputs)
                         # loss = loss_func(outputs, truth_data)
 
                         if phase == 'train':
@@ -86,7 +75,8 @@ def train_model(model: nn.Module,
                 targets = np.concatenate(targets)
                 # print(predictions[:3, :3])
                 # print(targets[:3, :3])
-                scores = calculate_metrics(predictions.reshape(predictions.shape[0], -1), targets.reshape(targets.shape[0], -1), **kwargs)
+                scores = calculate_metrics(predictions.reshape(predictions.shape[0], -1),
+                                           targets.reshape(targets.shape[0], -1), **kwargs)
                 writer.add_scalars(f'score/{phase}', scores, global_step=epoch)
                 print(scores)
                 if phase == 'val' and scores['RMSE'] < worst_rmse:

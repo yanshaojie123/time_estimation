@@ -10,16 +10,6 @@ import scipy.sparse as sp
 from scipy.sparse import linalg
 from scipy.sparse.linalg import eigs
 
-from utils.load_config import get_attribute
-
-# convert data from cpu to gpu, accelerate the running speed
-def convert_to_gpu(data):
-    # if get_attribute('`') != -1 and torch.cuda.is_available():
-    if torch.cuda.is_available():
-        data = data.cuda(get_attribute('cuda'))
-    return data
-
-
 
 # # maxPool on the input tensor, in the item dimension, return the pooled value
 # def maxPool(tensor, dim):
@@ -41,6 +31,7 @@ def convert_to_gpu(data):
 def save_model(path: str, **save_dict):
     os.makedirs(os.path.split(path)[0], exist_ok=True)
     torch.save(save_dict, path)
+
 
 def load_pickle(pickle_file):
     try:

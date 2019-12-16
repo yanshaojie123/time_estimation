@@ -1,0 +1,10 @@
+{
+  "deeptte": {
+    "kernel_size": 3,
+    "num_filter": 32,
+    "pooling_method": "attention",
+    "num_final_fcs": 3,
+    "final_fc_size": 128,
+    "alpha": 0.3
+  }
+}

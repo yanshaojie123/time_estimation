@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from utils.metric import calculate_metrics
-from utils.util import save_model
+from utils.util import save_model, to_var
 
 
 def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
@@ -33,22 +33,20 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
             running_loss = {phase: 0.0 for phase in phases}
             for phase in phases:
                 if phase == 'train':
-                    kwargs['is_eval'] = False
                     model.train()
                 else:
-                    kwargs['is_eval'] = True
                     model.eval()
 
                 steps, predictions, targets = 0, list(), list()
                 tqdm_loader = tqdm(enumerate(data_loaders[phase]))
                 for step, (features, truth_data) in tqdm_loader:
-                    features = features.to(args.device)
-                    truth_data = truth_data.to(args.device)
+                    features = to_var(features, args.device)
+                    truth_data = to_var(truth_data, args.device)
                     with torch.set_grad_enabled(phase == 'train'):
                         if args.lossinside:
-                            loss, outputs = model(features, truth_data, loss_func, **kwargs)
+                            loss, outputs = model(features, truth_data, loss_func, args)
                         else:
-                            outputs = model(features, **kwargs)
+                            outputs = model(features, args)
                             loss = loss_func(truth=truth_data, predict=outputs)
                         # loss = loss_func(outputs, truth_data)
 

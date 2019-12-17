@@ -74,10 +74,11 @@ def create_model(args):
     with open(absPath) as file:
         model_config = json.load(file)[args.model]
     if args.model == "deeptte":
+        args.lossinside = model_config['lossinside'] == 1
         return DeepTTE(**model_config)
 
 
-def create_loss(args,):
+def create_loss(args):
     # if loss_type == 'mse_loss':
     #     return convert_to_gpu(MSELoss())
     # elif loss_type == 'bce_loss':
@@ -85,7 +86,7 @@ def create_loss(args,):
     if args.loss == 'masked_rmse_loss':
         return masked_rmse_loss(args.scaler, 0.0)
     elif args.loss == 'masked_mse_loss':
-        return masked_mse_loss(kwargs['scaler'], 0.0)
+        return masked_mse_loss(args.scaler, 0.0)
     else:
         raise ValueError("Unknown loss function.")
 

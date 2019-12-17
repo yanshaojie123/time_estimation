@@ -1,6 +1,7 @@
 {
   "chengdu": {
     "data_dir": "data/chengdu",
-    "batch_size": 128
+    "batch_size": 128,
+    "collate_fn": "cdtte"
   }
 }

@@ -45,6 +45,7 @@ def load_dataset(args):
     absPath = os.path.join(os.path.dirname(__file__), "data_config.json")
     with open(absPath) as file:
         data_config = json.load(file)[args.dataset]
+        args.data_config = data_config
 
     data = {}
     loader = {}

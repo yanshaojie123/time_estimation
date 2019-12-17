@@ -23,7 +23,7 @@ def get_local_seq(full_seq, kernel_size, mean=0, std=1):
 
     local_seq = first_seq - second_seq
 
-    local_seq = (local_seq - mean) / std  # todo: normalize
+    local_seq = (local_seq - mean) / std
 
     return local_seq
 
@@ -211,8 +211,8 @@ class EntireEstimator(nn.Module):
 
         hidden = F.leaky_relu(self.input2hid(inputs))
 
-        for i in range(len(self.residuals)):
-            residual = F.leaky_relu(self.residuals[i](hidden))
+        for layer in self.residuals:
+            residual = F.leaky_relu(layer(hidden))
             hidden = hidden + residual
 
         out = self.hid2out(hidden)
@@ -220,35 +220,35 @@ class EntireEstimator(nn.Module):
         return out
 
 
-# class LocalEstimator(nn.Module):
-#     def __init__(self, input_size):
-#         super(LocalEstimator, self).__init__()
-#
-#         self.input2hid = nn.Linear(input_size, 64)
-#         self.hid2hid = nn.Linear(64, 32)
-#         self.hid2out = nn.Linear(32, 1)
-#
-#     def forward(self, sptm_s):
-#         hidden = F.leaky_relu(self.input2hid(sptm_s))
-#
-#         hidden = F.leaky_relu(self.hid2hid(hidden))
-#
-#         out = self.hid2out(hidden)
-#
-#         return out
-#
-#     def eval_on_batch(self, pred, lens, label, mean, std):
-#         label = nn.utils.rnn.pack_padded_sequence(label, lens, batch_first=True)[0]
-#         label = label.view(-1, 1)
-#
-#         label = label * std + mean
-#         pred = pred * std + mean
-#
-#         loss = torch.abs(pred - label) / (label + EPS)
-#
-#         return loss.mean()
-#
-#
+class LocalEstimator(nn.Module):
+    def __init__(self, input_size):
+        super(LocalEstimator, self).__init__()
+
+        self.input2hid = nn.Linear(input_size, 64)
+        self.hid2hid = nn.Linear(64, 32)
+        self.hid2out = nn.Linear(32, 1)
+
+    def forward(self, sptm_s):
+        hidden = F.leaky_relu(self.input2hid(sptm_s))
+
+        hidden = F.leaky_relu(self.hid2hid(hidden))
+
+        out = self.hid2out(hidden)
+
+        return out
+
+    def eval_on_batch(self, pred, lens, label, mean, std):
+        label = nn.utils.rnn.pack_padded_sequence(label, lens, batch_first=True)[0]
+        label = label.view(-1, 1)
+
+        label = label * std + mean
+        pred = pred * std + mean
+
+        loss = torch.abs(pred - label) / (label + EPS)
+
+        return loss.mean()
+
+
 class DeepTTE(nn.Module):
     def __init__(self, kernel_size=3, num_filter=32, pooling_method='attention', num_final_fcs=3, final_fc_size=128,
                  alpha=0.3):
@@ -291,14 +291,16 @@ class DeepTTE(nn.Module):
         sptm_s, sptm_l, sptm_t = self.spatio_temporal(traj, attr_t, config)
 
         entire_out = self.entire_estimate(attr_t, sptm_t)
-        pred_dict, entire_loss = self.entire_estimate.eval_on_batch(entire_out)
+        # pred_dict, entire_loss = self.entire_estimate.eval_on_batch(entire_out)
         #             # , config['time_mean'],config['time_std']) todo: normalize
-        label = truth_data.view(-1, 1)
+        entire_label = truth_data.view(-1, 1)
+        std = config.data_config['time_std']
+        mean = config.data_config['time_mean']
 
-        # label = label * std + mean
-        # pred = pred * std + mean
+        entire_label = entire_label * std + mean
+        entire_out = entire_out * std + mean
 
-        loss = torch.abs(entire_out - label) / label
+        loss = torch.abs(entire_out - entire_label) / entire_label
 
         entire_loss = loss.mean()
         # sptm_s is a packed sequence (see pytorch doc for details), only used during the training
@@ -308,10 +310,18 @@ class DeepTTE(nn.Module):
 
             # get ground truth of each local path
             local_label = get_local_seq(traj['time_gap'], self.kernel_size)  # todo:, mean, std)
+            label = nn.utils.rnn.pack_padded_sequence(local_label, sptm_l, batch_first=True)[0]
+            label = label.view(-1, 1)
+
+            # label = label * std + mean
+            # pred = pred * std + mean
+            loss = torch.abs(local_out - label) / (label + EPS)
+            local_loss = loss.mean()
+
 #             local_loss = self.local_estimate.eval_on_batch(local_out, sptm_l, local_label)  # todo:, mean, std)
 #
-#             return pred_dict, (1 - self.alpha) * entire_loss + self.alpha * local_loss
-#         else:
+            return entire_out, (1 - self.alpha) * entire_loss + self.alpha * local_loss
+        else:
 #             pred_dict, entire_loss = self.entire_estimate.eval_on_batch(entire_out, attr['time'])
 #             # , config['time_mean'],config['time_std']) todo: normalize
-#             return pred_dict, entire_loss
+            return entire_out, entire_loss

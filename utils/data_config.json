@@ -1,6 +1,6 @@
 {
-  "chengdu": {
-    "data_dir": "data/chengdu",
+  "chengdu_sample": {
+    "data_dir": "data/chengdu_sample",
     "batch_size": 128,
     "collate_fn": "cdtte",
     "dist_gap_mean": 0.274716042312,

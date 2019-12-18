@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 from models.DeepTTE import DeepTTE
 from utils.loss import masked_rmse_loss, masked_mse_loss
 
+
 class StandardScaler:
     """
     Standard the input
@@ -37,8 +38,55 @@ class MyDataset(Dataset):
         return len(self.inputs)
 
 
+class Datadict(Dataset):
+    def __init__(self, inputs):
+        self.content = inputs
+
+    def __getitem__(self, idx):
+        return self.content[idx]
+
+    def __len__(self):
+        return len(self.content)
+
+
 def default(x):
     return x
+
+
+def cdtte(data):
+    stat_attrs = ['dist', 'time']
+    info_attrs = ['driverID', 'dateID', 'weekID', 'timeID']
+    traj_attrs = ['lngs', 'lats', 'states', 'time_gap', 'dist_gap']
+
+    attr, traj = {}, {}
+
+    lens = np.asarray([len(item['lngs']) for item in data])
+
+    for key in stat_attrs:
+        x = torch.FloatTensor([item[key] for item in data])
+        # attr[key] = utils.normalize(x, key)
+        attr[key] = x
+
+    for key in info_attrs:
+        attr[key] = torch.LongTensor([item[key] for item in data])
+
+    for key in traj_attrs:
+        # pad to the max length
+        seqs = np.asarray([item[key] for item in data])
+        mask = np.arange(lens.max()) < lens[:, None]
+        padded = np.zeros(mask.shape, dtype=np.float32)
+        padded[mask] = np.concatenate(seqs)
+
+        # if key in ['lngs', 'lats', 'time_gap', 'dist_gap']:
+        #     padded = utils.normalize(padded, key)
+
+        padded = torch.from_numpy(padded).float()
+        traj[key] = padded
+
+    lens = lens.tolist()
+    traj['lens'] = lens
+
+    return {'attr': attr, 'traj': traj}, attr['time']
 
 
 def load_dataset(args):
@@ -68,6 +116,26 @@ def load_dataset(args):
         loader[phase] = DataLoader(MyDataset(data['x_' + phase], data['y_' + phase]), data_config['batch_size'],
                                    collate_fn=eval(data_config['collate_fn']), shuffle=True, drop_last=True)
     return loader, scaler
+
+
+def load_datadict(args):
+    abspath = os.path.join(os.path.dirname(__file__), "data_config.json")
+    with open(abspath) as file:
+        data_config = json.load(file)[args.dataset]
+        args.data_config = data_config
+
+    data = {}
+    loader = {}
+    phases = ['train', 'val', 'test']
+
+    for phase in phases:
+        data[phase] = np.load(os.path.join(data_config['data_dir'], phase + '.npy'))
+
+    for phase in phases:
+        print(data[phase].shape)
+        loader[phase] = DataLoader(Datadict(data[phase]), data_config['batch_size'],
+                                   collate_fn=eval(data_config['collate_fn']), shuffle=True, drop_last=True)
+    return loader, StandardScaler(mean=0, std=1)
 
 
 def create_model(args):

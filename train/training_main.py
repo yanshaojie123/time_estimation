@@ -8,8 +8,9 @@ from torch import optim
 import numpy as np
 
 from train.train_model import train_model
-from utils.prepare import load_dataset, create_model, create_loss
+from utils.prepare import load_dataset, create_model, create_loss, load_datadict
 from utils.metric import calculate_metrics
+from utils.util import to_var
 
 
 def test_model(model, data_loader, args):
@@ -18,13 +19,20 @@ def test_model(model, data_loader, args):
     targets = list()
     tqdm_loader = tqdm(enumerate(data_loader))
     for step, (features, truth_data) in tqdm_loader:
-        features = features.to(args.device)
-        truth_data = truth_data.to(args.device)
-        outputs = model(features, truth_data=truth_data)
+        features = to_var(features, args.device)
+        truth_data = to_var(truth_data, args.device)
+        if args.lossinside:
+            _, outputs = model(features, truth_data, args, loss_func=None)
+        else:
+            outputs = model(features, args)
+        # outputs = model(features, truth_data=truth_data)
+
         targets.append(truth_data.cpu().numpy())
         predictions.append(outputs.cpu().detach().numpy())
     pre2 = np.concatenate(predictions).squeeze()
     tar2 = np.concatenate(targets)
+    print(pre2[:30])
+    print(tar2[:30])
     # print(calculate_metrics(pre2[:, :3], tar2[:, :3], **params))
     # print(calculate_metrics(pre2[:, :6], tar2[:, :6], **params))
     # print(calculate_metrics(pre2[:, :9], tar2[:, :9], **params))
@@ -37,7 +45,7 @@ def train_main(args):
         sys.exit(0)
     print(f"{args.mode} {args.model}_{args.identify} on {args.dataset}")
     # 创建data_loader
-    data_loaders, scaler = load_dataset(args)
+    data_loaders, scaler = load_datadict(args)
     args.scaler = scaler
     model = create_model(args)
     loss_func = create_loss(args)

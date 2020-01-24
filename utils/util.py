@@ -41,8 +41,8 @@ def to_var(var, device=0):
         return var
     if isinstance(var, dict):
         for key in var:
-            var[key] = to_var(var[key])
+            var[key] = to_var(var[key], device)
         return var
     if isinstance(var, list):
-        var = map(lambda x: to_var(x), var)
+        var = map(lambda x: to_var(x, device), var)
         return var

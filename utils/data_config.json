@@ -15,5 +15,39 @@
     "lats_std": 0.04154695076189434,
     "time_mean": 1555.75269436,
     "time_std": 646.373021152
+  },
+  "porto": {
+    "data_dir": "data/porto",
+    "batch_size": 128,
+    "collate_fn": "cdtte",
+    "dist_gap_mean": 0,
+    "dist_gap_std": 1,
+    "time_gap_mean": 0,
+    "time_gap_std": 1,
+    "lngs_std": 1,
+    "lngs_mean": 0,
+    "lats_mean": 0,
+    "dist_std": 1,
+    "dist_mean": 0,
+    "lats_std": 1,
+    "time_mean": 0,
+    "time_std": 1
+  },
+  "portotest": {
+    "data_dir": "data/tt",
+    "batch_size": 128,
+    "collate_fn": "cdtte",
+    "dist_gap_mean": 0,
+    "dist_gap_std": 1,
+    "time_gap_mean": 0,
+    "time_gap_std": 1,
+    "lngs_std": 1,
+    "lngs_mean": 0,
+    "lats_mean": 0,
+    "dist_std": 1,
+    "dist_mean": 0,
+    "lats_std": 1,
+    "time_mean": 0,
+    "time_std": 1
   }
 }

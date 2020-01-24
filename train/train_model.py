@@ -24,7 +24,7 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
 
     since = time.clock()
 
-    save_dict, worst_rmse = {'model_state_dict': copy.deepcopy(model.state_dict()), 'epoch': 0}, 100000
+    save_dict, best_rmse = {'model_state_dict': copy.deepcopy(model.state_dict()), 'epoch': 0}, 100000
 
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=.2, patience=5, threshold=1e-3, min_lr=1e-6)
 
@@ -44,7 +44,7 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
                     truth_data = to_var(truth_data, args.device)
                     with torch.set_grad_enabled(phase == 'train'):
                         if args.lossinside:
-                            loss, outputs = model(features, truth_data, loss_func, args)
+                            loss, outputs = model(features, truth_data, args, loss_func=loss_func)
                         else:
                             outputs = model(features, args)
                             loss = loss_func(truth=truth_data, predict=outputs)
@@ -57,7 +57,7 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
 
                     targets.append(truth_data.cpu().numpy())
                     with torch.no_grad():
-                        predictions.append(outputs.cpu().numpy())
+                        predictions.append(outputs.cpu().detach().numpy())
 
                     running_loss[phase] += loss * truth_data.size(0)
                     steps += truth_data.size(0)
@@ -74,11 +74,11 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
                 # print(predictions[:3, :3])
                 # print(targets[:3, :3])
                 scores = calculate_metrics(predictions.reshape(predictions.shape[0], -1),
-                                           targets.reshape(targets.shape[0], -1), **kwargs)
+                                           targets.reshape(targets.shape[0], -1), args, **kwargs)
                 writer.add_scalars(f'score/{phase}', scores, global_step=epoch)
                 print(scores)
-                if phase == 'val' and scores['RMSE'] < worst_rmse:
-                    worst_rmse = scores['RMSE'],
+                if phase == 'val' and scores['RMSE'] < best_rmse:
+                    best_rmse = scores['RMSE'],
                     save_dict.update(model_state_dict=copy.deepcopy(model.state_dict()),
                                      epoch=epoch,
                                      optimizer_state_dict=copy.deepcopy(optimizer.state_dict()))

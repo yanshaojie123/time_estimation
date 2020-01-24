@@ -68,11 +68,15 @@ def cdtte(data):
         attr[key] = x
 
     for key in info_attrs:
-        attr[key] = torch.LongTensor([item[key] for item in data])
+        if key == "driverID":
+            attr[key] = torch.LongTensor([item[key]%24000 for item in data])
+        else:
+            attr[key] = torch.LongTensor([item[key] for item in data])
 
     for key in traj_attrs:
         # pad to the max length
         seqs = np.asarray([item[key] for item in data])
+        # print([len(item[key]) for item in data])
         mask = np.arange(lens.max()) < lens[:, None]
         padded = np.zeros(mask.shape, dtype=np.float32)
         padded[mask] = np.concatenate(seqs)
@@ -126,7 +130,10 @@ def load_datadict(args):
 
     data = {}
     loader = {}
-    phases = ['train', 'val', 'test']
+    if args.mode == 'test':
+        phases = ['test']
+    else:
+        phases = ['train', 'val', 'test']
 
     for phase in phases:
         data[phase] = np.load(os.path.join(data_config['data_dir'], phase + '.npy'))
@@ -148,10 +155,6 @@ def create_model(args):
 
 
 def create_loss(args):
-    # if loss_type == 'mse_loss':
-    #     return convert_to_gpu(MSELoss())
-    # elif loss_type == 'bce_loss':
-    #     return convert_to_gpu(BCELoss())
     if args.loss == 'masked_rmse_loss':
         return masked_rmse_loss(args.scaler, 0.0)
     elif args.loss == 'masked_mse_loss':

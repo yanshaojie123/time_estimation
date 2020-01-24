@@ -9,10 +9,11 @@ EPS = 10
 def get_local_seq(full_seq, kernel_size, mean=0, std=1):
     seq_len = full_seq.size()[1]
 
-    if torch.cuda.is_available():
-        indices = torch.cuda.LongTensor(seq_len)
-    else:
-        indices = torch.LongTensor(seq_len)
+    # if torch.cuda.is_available():
+    #     indices = torch.cuda.LongTensor(seq_len)
+    # else:
+    #     indices = torch.LongTensor(seq_len)
+    indices = torch.LongTensor(seq_len).to(full_seq.device)
 
     torch.arange(0, seq_len, out=indices)
 
@@ -55,6 +56,8 @@ class Attr(nn.Module):
         for name, dim_in, dim_out in Attr.embed_dims:
             embed = getattr(self, name + '_em')
             attr_t = attr[name].view(-1, 1)
+            # attr_t = attr_t.to('cuda:0')
+            # print(attr_t.device)
             attr_t = torch.squeeze(embed(attr_t))
             em_list.append(attr_t)
 
@@ -88,26 +91,30 @@ class GeoConv(nn.Module):
         '''
         lngs = torch.unsqueeze(traj['lngs'], dim=2)
         lats = torch.unsqueeze(traj['lats'], dim=2)
-
+        # print(traj.keys())
         states = self.state_em(traj['states'].long())
 
         locs = torch.cat((lngs, lats, states), dim=2)
 
         # map the coords into 16-dim vector
+        # print(locs.device)
         locs = F.tanh(self.process_coords(locs))
+
         locs = locs.permute(0, 2, 1)
+
         # locs: (B, embedding_size, seqlen)
         conv_locs = F.elu(self.conv(locs)).permute(0, 2, 1)
+
         # conv_locs: (B, Seqlen-kernel_size+1, num_filter)
         # calculate the dist for local paths
         local_dist = get_local_seq(traj['dist_gap'], self.kernel_size)
+
         dist_gap_mean = config.data_config['dist_gap_mean']
         dist_gap_std = config.data_config['dist_gap_std']
         local_dist = (local_dist - dist_gap_mean) / dist_gap_std
         local_dist = torch.unsqueeze(local_dist, dim=2)
 
         conv_locs = torch.cat((conv_locs, local_dist), dim=2)
-
         return conv_locs
 
 
@@ -186,7 +193,7 @@ class SpatioTemporal(nn.Module):
 
         lens = list(map(lambda x: x - self.kernel_size + 1, traj['lens']))
 
-        packed_inputs = nn.utils.rnn.pack_padded_sequence(conv_locs, lens, batch_first=True)
+        packed_inputs = nn.utils.rnn.pack_padded_sequence(conv_locs, lens, batch_first=True, enforce_sorted=False)
 
         packed_hiddens, (h_n, c_n) = self.rnn(packed_inputs)
         hiddens, lens = nn.utils.rnn.pad_packed_sequence(packed_hiddens, batch_first=True)
@@ -255,7 +262,7 @@ class LocalEstimator(nn.Module):
 
 class DeepTTE(nn.Module):
     def __init__(self, kernel_size=3, num_filter=32, pooling_method='attention', num_final_fcs=3, final_fc_size=128,
-                 alpha=0.3):
+                 alpha=0.3, **kwargs):
         super(DeepTTE, self).__init__()
         self.kernel_size = kernel_size
         self.num_filter = num_filter
@@ -286,7 +293,7 @@ class DeepTTE(nn.Module):
             elif name.find('.weight') != -1:
                 nn.init.xavier_uniform(param.data)
 
-    def forward(self, inputs, truth_data, config):
+    def forward(self, inputs, truth_data, config, **kwargs):
         attr = inputs['attr']
         traj = inputs['traj']
 
@@ -317,7 +324,7 @@ class DeepTTE(nn.Module):
 
             # get ground truth of each local path
             local_label = get_local_seq(traj['time_gap'], self.kernel_size)
-            local_label = nn.utils.rnn.pack_padded_sequence(local_label, sptm_l, batch_first=True)[0]
+            local_label = nn.utils.rnn.pack_padded_sequence(local_label, sptm_l, batch_first=True, enforce_sorted=False)[0]
             local_label = local_label.view(-1, 1)
 
             local_mean = (self.kernel_size - 1) * config.data_config['time_gap_mean']
@@ -328,6 +335,6 @@ class DeepTTE(nn.Module):
             local_loss = torch.abs(local_pred - local_label) / (local_label + EPS)
             local_loss = local_loss.mean()
 
-            return entire_out, (1 - self.alpha) * entire_loss + self.alpha * local_loss
+            return (1 - self.alpha) * entire_loss + self.alpha * local_loss, entire_out
         else:
-            return entire_out, entire_loss
+            return entire_loss, entire_out

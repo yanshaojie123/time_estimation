@@ -17,8 +17,11 @@ def test_model(model, data_loader, args):
     model.eval()
     predictions = list()
     targets = list()
+    inds = list()
     tqdm_loader = tqdm(enumerate(data_loader))
     for step, (features, truth_data) in tqdm_loader:
+        if 'inds' in features.keys():
+            inds.append(features['inds'])
         features = to_var(features, args.device)
         truth_data = to_var(truth_data, args.device)
         if args.lossinside:
@@ -31,12 +34,20 @@ def test_model(model, data_loader, args):
         predictions.append(outputs.cpu().detach().numpy())
     pre2 = np.concatenate(predictions).squeeze()
     tar2 = np.concatenate(targets)
-    print(pre2[:30])
-    print(tar2[:30])
+    if len(inds) > 0:
+        print(len(inds))
+        print(inds[0])
+        inds = np.concatenate(inds)
+    else:
+        inds = None
     # print(calculate_metrics(pre2[:, :3], tar2[:, :3], **params))
     # print(calculate_metrics(pre2[:, :6], tar2[:, :6], **params))
     # print(calculate_metrics(pre2[:, :9], tar2[:, :9], **params))
-    print(calculate_metrics(pre2, tar2, args))
+    metric = calculate_metrics(pre2, tar2, args, plot=True, inds=inds)
+    print(metric)
+    with open('data/result_TTEModel.txt', 'a') as f:
+        f.write(f"epoch:{args.epochs} lr:{args.lr}\ndataset:{args.dataset} identify:{args.identify}\n")
+        f.write(f"{metric}\n\n")
 
 
 def train_main(args):
@@ -45,7 +56,7 @@ def train_main(args):
         sys.exit(0)
     print(f"{args.mode} {args.model}_{args.identify} on {args.dataset}")
     # 创建data_loader
-    data_loaders, scaler = load_datadict(args)
+    data_loaders, scaler = load_datadict(args)  # todo
     args.scaler = scaler
     model = create_model(args)
     loss_func = create_loss(args)

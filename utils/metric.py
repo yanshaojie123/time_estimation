@@ -1,5 +1,6 @@
 import numpy as np
-
+from scipy.stats import pearsonr
+import matplotlib.pyplot as plt
 # 衡量模型的性能
 # def evaluate(y_predictions: np.ndarray, y_targets: np.ndarray, threshold: float = 0.5):
 #     """
@@ -87,7 +88,7 @@ def masked_mape_np(preds, labels, null_val=np.nan):
 #     return loss
 
 
-def calculate_metrics(preds, labels, args, null_val=0.0):  # todo: delete one from this and evaluate()
+def calculate_metrics(preds, labels, args, null_val=0.0, plot=False, inds=None):  # todo: delete one from this and evaluate()
     """
     Calculate the MAE, MAPE, RMSE
     :param df_pred:
@@ -96,13 +97,23 @@ def calculate_metrics(preds, labels, args, null_val=0.0):  # todo: delete one fr
     :return:
     """
     try:
+        # print(pearsonr(preds, labels))
         scaler = args.scaler
-        preds = scaler.inverse_transform(preds)
-        labels = scaler.inverse_transform(labels)
-
+        preds = scaler.inverse_transform(preds.reshape([-1,1])).squeeze()
+        labels = scaler.inverse_transform(labels.reshape([-1,1])).squeeze()
+        if plot:
+            plt.scatter(preds, labels)
+            plt.axis('equal')
+            plt.show()
+        print(preds[:10])
+        print(labels[:10])
         mape = masked_mape_np(preds, labels, 0.0)
         mae = masked_mae_np(preds, labels, 0.0)
         rmse = masked_rmse_np(preds, labels, 0.0)
+        if inds is not None:
+            ape = np.abs(np.divide(np.subtract(preds, labels).astype('float32'), labels + 1e-5))
+            res = np.concatenate([inds[ape > mape].reshape(-1,1), ape[ape > mape].reshape(-1,1)], axis=-1)
+            np.save('data/porto/badcase.npy', res)
 
         # mape = np.mean(np.abs((preds-labels)/(labels+1e-5)))
         # mae = np.mean(np.abs(preds-labels).astype('float32'))
@@ -112,5 +123,11 @@ def calculate_metrics(preds, labels, args, null_val=0.0):  # todo: delete one fr
         mae = 0
         mape = 0
         rmse = 0
+    try:
+        pearsonrs = pearsonr(preds, labels)
+    except Exception as e:
+        print(e)
+        pearsonrs = (0, 0)
     # return mae, mape, rmse
-    return {'MAE': mae, 'MAPE': mape, 'RMSE': rmse}
+    # print(pearsonrs)
+    return {'MAE': mae, 'MAPE': mape, 'RMSE': rmse, 'pearr':pearsonrs[0], 'pearp': pearsonrs[1]}

@@ -74,7 +74,7 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
                 # print(predictions[:3, :3])
                 # print(targets[:3, :3])
                 scores = calculate_metrics(predictions.reshape(predictions.shape[0], -1),
-                                           targets.reshape(targets.shape[0], -1), args, **kwargs)
+                                           targets.reshape(targets.shape[0], -1), args, plot=epoch % 5 == 0, **kwargs)
                 writer.add_scalars(f'score/{phase}', scores, global_step=epoch)
                 print(scores)
                 if phase == 'val' and scores['RMSE'] < best_rmse:

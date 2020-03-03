@@ -49,5 +49,25 @@
     "lats_std": 1,
     "time_mean": 0,
     "time_std": 1
+  },
+  "porto_TTEModel": {
+    "data_dir": "data/porto/portotest",
+    "batch_size": 32,
+    "collate_fn": "portoedge"
+  },
+  "porto_TTEModel2": {
+    "data_dir": "data/porto/portotrain_withgps",
+    "batch_size": 128,
+    "collate_fn": "portoedge"
+  },
+  "porto_TTEModel3": {
+    "data_dir": "data/porto/portotrain_withhlratio",
+    "batch_size": 8,
+    "collate_fn": "portoedge"
+  },
+  "porto_TTEModel4": {
+    "data_dir": "data/porto/portotrain",
+    "batch_size": 8,
+    "collate_fn": "portoedge"
   }
 }

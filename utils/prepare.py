@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 
 from models.DeepTTE import DeepTTE
 from models.TTEModel import TTEModel
+from models.TTEModelo import TTEModel as TTEModelo
 from utils.loss import masked_rmse_loss, masked_mse_loss
 from sklearn.preprocessing import StandardScaler
 
@@ -151,8 +152,8 @@ def portoedge(data):
     # scaler.scale_ = [131.50032485, 1., 1., 1.]
     scaler2 = StandardScaler()
     scaler2.fit([[0]])
-    # scaler2.mean_ = [635.7325009]
-    # scaler2.scale_ = [445.58004053]
+    # scaler2.mean_ = [490.5749094979864]
+    # scaler2.scale_ = [231.25910758152915]
 
     # time = torch.Tensor(scaler2.transform([[len(str(k[2]).split(',')) * 15 -15 for k in data]])[0])
     time = torch.Tensor(scaler2.transform([[len(k[1]) * 15 - 15 for k in data]])[0])
@@ -233,19 +234,23 @@ def load_datadict(args):
         loader[phase] = DataLoader(Datadict(data[phase]), data_config['batch_size'],
                                    collate_fn=eval(data_config['collate_fn']), shuffle=True, drop_last=True)
     return loader, StandardScaler2(mean=0, std=1)
-    # return loader, StandardScaler2(mean=635.7325009, std=445.58004053)
+    # return loader, StandardScaler2(mean=490.5749094979864, std=231.25910758152915)
 
 
 def create_model(args):
     absPath = os.path.join(os.path.dirname(__file__), "model_config.json")
     with open(absPath) as file:
         model_config = json.load(file)[args.model]
+    args.model_config = model_config
     if args.model == "deeptte":
         args.lossinside = model_config['lossinside'] == 1
         return DeepTTE(**model_config)
     elif args.model == "TTEModel":
         args.lossinside = False
         return TTEModel(**model_config)
+    elif args.model == "TTEModelo":
+        args.lossinside = False
+        return TTEModelo(**model_config)
 
 
 def create_loss(args):

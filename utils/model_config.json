@@ -8,17 +8,24 @@
     "alpha": 0.3,
     "lossinside": 1
   },
-  "TTEModel": {
+  "TTEModelb": {
     "input_dim": 87,
     "out_dim": 52,
     "seq_input_dim": 52,
     "seq_hidden_dim": 30,
     "seq_layer": 3
   },
-  "TTEModela": {
+  "TTEModel": {
     "input_dim": 55,
     "out_dim": 20,
     "seq_input_dim": 52,
+    "seq_hidden_dim": 30,
+    "seq_layer": 3
+  },
+  "TTEModelo": {
+    "input_dim": 22,
+    "out_dim": 20,
+    "seq_input_dim": 20,
     "seq_hidden_dim": 30,
     "seq_layer": 3
   }

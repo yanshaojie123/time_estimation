@@ -191,5 +191,235 @@ def deeptraveldelout():
             json.dump(d, f)
             f.write('\n')
 
+def handldchengdu(day):
+    # import time
+    # import pandas as pd
+    # import numpy as np
+    # day = 20140803
+    data = pd.read_csv(f'data/chengdu/{day}_train.txt', header=None, names=["taxiid", "lat", "lng", "state", "time"])#.iloc[:10000]
+    data['timestamp'] = data['time'].apply(lambda x: int(time.mktime(time.strptime(x, "%Y/%m/%d %H:%M:%S"))))
+    ids = pd.unique(data.taxiid)
+    res = []
+    pad = np.asarray([[0,0,0,0,0,0]])
+    for id in ids:
+        iddata = data[data.taxiid == id].sort_values(by='timestamp').values
+        iddata = np.concatenate([iddata, pad], axis=0)
+        taxiid = id
+        lats = []
+        lngs = []
+        time_gap = []
+        start = 0
+
+        for k in iddata:
+            if k[3] == 1:
+                if len(lats) == 0:
+                    start = k[5]
+                    lats.append(k[1])
+                    lngs.append(k[2])
+                    time_gap.append(k[5] - start)
+                else:
+                    lats.append(k[1])
+                    lngs.append(k[2])
+                    time_gap.append(k[5]-start)
+            else:
+                if len(lats) != 0:
+                    res.append([taxiid, start, lats.copy(), lngs.copy(), time_gap.copy()])
+                    lngs.clear()
+                    lats.clear()
+                    time_gap.clear()
+    np.save(f"data/chengdu/npy/{day}.npy", np.asarray(res, dtype=object))
+    # for d in range(20140810, 20140830):
+    #     print(f"start {d} {time.strftime('%H:%M:%S',time.localtime(time.time()))}")
+    #     try:
+    #         handldchengdu(d)
+    #     except Exception as e:
+    #         print(f"error on {d} {time.strftime('%H:%M:%S',time.localtime(time.time()))}")
+    #         print(e)
+    #     print(f"end {d} {time.strftime('%H:%M:%S',time.localtime(time.time()))}")
+def _transformlat(lng, lat):
+  ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat + \
+     0.1 * lng * lat + 0.2 * math.sqrt(math.fabs(lng))
+  ret += (20.0 * math.sin(6.0 * lng * pi) + 20.0 *
+      math.sin(2.0 * lng * pi)) * 2.0 / 3.0
+  ret += (20.0 * math.sin(lat * pi) + 40.0 *
+      math.sin(lat / 3.0 * pi)) * 2.0 / 3.0
+  ret += (160.0 * math.sin(lat / 12.0 * pi) + 320 *
+      math.sin(lat * pi / 30.0)) * 2.0 / 3.0
+  return ret
+def _transformlng(lng, lat):
+  ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng + \
+     0.1 * lng * lat + 0.1 * math.sqrt(math.fabs(lng))
+  ret += (20.0 * math.sin(6.0 * lng * pi) + 20.0 *
+      math.sin(2.0 * lng * pi)) * 2.0 / 3.0
+  ret += (20.0 * math.sin(lng * pi) + 40.0 *
+      math.sin(lng / 3.0 * pi)) * 2.0 / 3.0
+  ret += (150.0 * math.sin(lng / 12.0 * pi) + 300.0 *
+      math.sin(lng / 30.0 * pi)) * 2.0 / 3.0
+  return ret
+def gcj02_to_wgs84(lng, lat):
+  """
+  GCJ02(火星坐标系)转GPS84
+  :param lng:火星坐标系的经度
+  :param lat:火星坐标系纬度
+  :return:
+  """
+  # import math
+  x_pi = 3.14159265358979324 * 3000.0 / 180.0
+  pi = 3.1415926535897932384626  # π
+  a = 6378245.0  # 长半轴
+  ee = 0.00669342162296594323  # 扁率
+  dlat = _transformlat(lng - 105.0, lat - 35.0)
+  dlng = _transformlng(lng - 105.0, lat - 35.0)
+  radlat = lat / 180.0 * pi
+  magic = math.sin(radlat)
+  magic = 1 - ee * magic * magic
+  sqrtmagic = math.sqrt(magic)
+  dlat = (dlat * 180.0) / ((a * (1 - ee)) / (magic * sqrtmagic) * pi)
+  dlng = (dlng * 180.0) / (a / sqrtmagic * math.cos(radlat) * pi)
+  mglat = lat + dlat
+  mglng = lng + dlng
+  return [lng * 2 - mglng, lat * 2 - mglat]
+def mapgps(name):
+    data = np.load(f"data/chengdu/npy/{name}.npy", allow_pickle=True)
+    res = []
+    for d in data:
+        if len(d[3])>2:
+            after = np.asarray([gcj02_to_wgs84(k[0], k[1]) for k in list(zip(d[3], d[2]))])
+            d[2] = after[:, 1]
+            d[3] = after[:, 0]
+            res.append(d)
+    np.save(f'data/chengdu/mapgps/{name}.npy', np.asarray(res, dtype='object'))
 
 
+    # windows
+    d1 = np.load('data/chengdu/origin/20140803.npy', allow_pickle=True)
+    with open('chengdu_train.csv', 'w', newline='\n') as f:
+        f.write("id;geom\n")
+        for indext, item in enumerate(d1):
+            f.write(
+                f"{indext + 1};LINESTRING({','.join([f'{item[3][i]} {item[2][i]}' for i in range(len(item[3]))])})\n")
+def chengduinrec():
+    import numpy as np
+    import time
+    north = 30.75
+    south = 30.5930
+    east = 104.167
+    west = 103.9746
+    for name in range(20140804, 20140830):
+        try:
+            print(f"{name} begin at {time.strftime('%H:%M:%S'.format(time.localtime(time.time())))}")
+            data = np.load(f"data/chengdu/mapgps/{name}.npy", allow_pickle=True)
+            idx = []
+            for i, d in enumerate(data):
+                keep = True
+                for j in range(len(d[2])):
+                    if d[2][j]<south or d[2][j]>north:
+                        keep = False
+                        break
+                    if d[3][j]<west or d[3][j]>east:
+                        keep = False
+                        break
+                if keep:
+                    idx.append(i)
+            res = data[idx]
+            np.save(f'data/chengdu/inrec/{name}.npy', res)
+            if name < 20140810:
+                with open(f'data/chengdu/inrec/csv/{name}.csv', 'w', newline='\n') as f:
+                    f.write("id;geom\n")
+                    for indext, item in enumerate(res):
+                        f.write(f"{indext + 1};LINESTRING({','.join([f'{item[3][k]} {item[2][k]}' for k in range(len(item[2]))])})\n")
+            else:
+                with open(f'data/chengdu/inrec/csv2/{name}.csv', 'w', newline='\n') as f:
+                    f.write("id;geom\n")
+                    for indext, item in enumerate(res):
+                        f.write(f"{indext + 1};LINESTRING({','.join([f'{item[3][k]} {item[2][k]}' for k in range(len(item[2]))])})\n")
+        except Exception as e:
+            print(f"error on {name}")
+            print(e)
+
+def test():
+    import torch
+    from models.TTEModel import TTEModel
+    model = TTEModel(87, 52, 52, 30, 3)
+    model.load_state_dict(
+        torch.load('data/save_models/TTEModel_lstmfinale4norm_porto_TTEModel4/best_model.pkl')['model_state_dict'])
+    data = np.load('data/porto/portotrain/test.npy')
+    k = data[0]
+    res = []
+    for i in range(1440):
+        k[5] = i
+        res.append(model(portoedge([k])[0], {'ba': 2}))
+
+    plt.plot(torch.cat(res).detach().numpy())
+    plt.show()
+def computedeeptravelmeanstd():
+    with open('models/deeptravel/processed_data/train.txt', 'r') as f:
+        data = f.readlines()
+    import numpy as np
+    import json
+    data = [json.loads(d) for d in data]
+    for k in ['dist_gap', 'time_gap', 'lngs',  'lats',  'time_bin', 'T_X', 'T_Y', 'G_X', 'G_Y']:
+        d = np.concatenate([da[k] for da in data])
+        print(f'"{k}_mean": {np.mean(d)},')
+        print(f'"{k}_std": {np.std(d)},')
+    for k in ['dist', 'time']:
+        d = [da[k] for da in data]
+        print(f'"{k}_mean": {np.mean(d)},')
+        print(f'"{k}_std": {np.std(d)},')
+    with open('models/deeptravel/DeepTravel/processed_data/val', 'r') as f:
+        data = f.readlines()
+    for i in range(8):
+        with open(f'models/deeptravel/DeepTravel/processed_data/train_{i}', 'w') as f:
+            for d in data[int(len(data) * 0.1 * i):int(len(data) * 0.1 * (i + 1))]:
+                f.write(d)
+    for i in range(8):
+        print(f"train_{i},")
+
+def lajideeptrvel():
+    import os
+    os.chdir('models/deeptravel/DeepTravel')
+    from models.deeptravel.DeepTravel.data_loader import *
+    import json
+    import pickle
+    import gc
+    # with open('./traffic_features/short_ttf.pkl', 'rb') as file:
+    #     short_ttf = pickle.load(file)
+    # with open('./traffic_features/long_ttf.pkl', 'rb') as file:
+    #     long_ttf = pickle.load(file)
+    #
+    # data = 'val'
+    # with open(f'./processed_data/{data}', 'r') as file:
+    #     print("read start")
+    #     contento = file.readlines()  # todo
+    # for sp in range(10):
+    #     print(f"========================={sp}==================")
+    #     content = contento[int(len(contento)*0.1*sp):int(len(contento)*0.1*(sp+1))]
+    #     content = [json.loads(x) for x in content]
+    #     lengths = [len(x['G_X']) for x in content]
+    #     res = []
+    #     for i, d in enumerate(content):
+    #         try:
+    #             res.append(collate_fn([d], short_ttf, long_ttf))
+    #         except Exception as e:
+    #             print(e)
+    #         if i % 1000 == 0:
+    #             print(i)
+    #     with open(f'./processed_data/{data}_{sp}.pkl', 'wb') as f:
+    #         pickle.dump(res, f)
+    #     del content
+    #     del res
+    #     del f
+    #     del lengths
+    #     gc.collect()
+
+    import torch.multiprocessing
+    torch.multiprocessing.set_sharing_strategy('file_system')
+    loader = get_loader('trainjson.pkl', 128)
+    res = []
+    for idx, data in enumerate(loader):
+        if idx % 100 == 0 and idx > 0:
+            with open(f'./processed_data/aftercollate/train_{idx // 100}.pkl', 'wb') as f:
+                pickle.dump(res, f)
+            print(f"save{idx // 100} at {time.strftime('%H:%M:%S'.format(time.localtime(time.time())))}")
+            res.clear()
+        res.append(data)

@@ -4,7 +4,7 @@ from models.MHA import MyBlock
 
 
 class TTEModel(nn.Module):
-    def __init__(self, input_dim, seq_input_dim, seq_hidden_dim, seq_layer):
+    def __init__(self, input_dim, seq_input_dim, seq_hidden_dim, seq_layer, out_dim):
         '''
         edge feature: highway, bridge, tunnel, length, lanes, maxspeed, width
         :param input_dim:
@@ -13,9 +13,9 @@ class TTEModel(nn.Module):
         self.highwayembed = nn.Embedding(15, 10, padding_idx=0)
         self.bridgeembed = nn.Embedding(3, 3, padding_idx=0)
         self.tunnelembed = nn.Embedding(4, 4, padding_idx=0)
-        self.weekembed = nn.Embedding(8, 3)
-        self.dateembed = nn.Embedding(366, 10)
-        self.timeembed = nn.Embedding(1440, 20)
+        # self.weekembed = nn.Embedding(8, 3)
+        # self.dateembed = nn.Embedding(366, 10)
+        # self.timeembed = nn.Embedding(1440, 20)
         self.represent = nn.Sequential(
             nn.Linear(input_dim, seq_input_dim),
             nn.ReLU(),
@@ -26,8 +26,8 @@ class TTEModel(nn.Module):
             nn.Linear(seq_input_dim, seq_input_dim)
             # nn.ReLU()
         )
-        # self.sequence = nn.LSTM(seq_input_dim, seq_hidden_dim, seq_layer, batch_first=True)
-        self.sequence = nn.GRU(seq_input_dim, seq_hidden_dim, seq_layer, batch_first=True)
+        self.sequence = nn.LSTM(seq_input_dim, seq_hidden_dim, seq_layer, batch_first=True)
+        # self.sequence = nn.GRU(seq_input_dim, seq_hidden_dim, seq_layer, batch_first=True)
         self.output = nn.Sequential(
             nn.Linear(seq_hidden_dim, int(seq_hidden_dim/2)),
             nn.ReLU(),
@@ -58,16 +58,21 @@ class TTEModel(nn.Module):
         # date = inputs['date']
         lens = inputs['lens']
 
-        highwayrep = self.highwayembed(feature[:, :, 0].long())
-        bridgerep = self.bridgeembed(feature[:, :, 1].long())
-        tunnelrep = self.tunnelembed(feature[:, :, 2].long())
-        weekrep = self.weekembed(feature[:, :, 3].long())
-        daterep = self.dateembed(feature[:, :, 4].long())
-        timerep = self.timeembed(feature[:, :, 5].long())
+        # highwayrep = self.highwayembed(feature[:, :, 0].long())
+        # bridgerep = self.bridgeembed(feature[:, :, 1].long())
+        # tunnelrep = self.tunnelembed(feature[:, :, 2].long())
+        highwayrep = torch.ones(list(feature.shape[:-1])+[10]).to(args.device)
+        bridgerep = torch.ones(list(feature.shape[:-1])+[3]).to(args.device)
+        tunnelrep = torch.ones(list(feature.shape[:-1])+[4]).to(args.device)
+        feature[...,6:11] = 1
+        # weekrep = self.weekembed(feature[:, :, 3].long())
+        # daterep = self.dateembed(feature[:, :, 4].long())
+        # timerep = self.timeembed(feature[:, :, 5].long())
         # print(bridgerep.shape)
         # print(feature.shape)
-        representation = self.represent(torch.cat([feature[:, :, -5:], highwayrep, bridgerep, tunnelrep, weekrep, daterep, timerep], dim=-1))
-
+        # representation = self.represent(torch.cat([feature[:, :, 6:11], highwayrep, bridgerep, tunnelrep, weekrep, daterep, timerep], dim=-1))
+        representation = self.represent(torch.cat([feature[:, :, 6:11], highwayrep, bridgerep, tunnelrep], dim=-1))
+        # representation = self.represent(torch.cat([feature[:, :, 6:11]], dim=-1))
         # hiddens = self.sequence(representation.unsqueeze(2)).squeeze()
 
         packed_inputs = nn.utils.rnn.pack_padded_sequence(representation, lens, batch_first=True, enforce_sorted=False)

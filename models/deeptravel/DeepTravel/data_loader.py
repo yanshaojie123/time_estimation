@@ -3,29 +3,54 @@ import collections
 import json
 import torch
 import numpy as np
+import pickle
 
 from torch.utils.data import Dataset, DataLoader
 
+# from models.deeptravel.DeepTravel import utils
 import utils
-
+import time
 
 class MySet(Dataset):
     def __init__(self, input_file):
         # processed_data includes G_X and G_Y indicies
         # day_bin, hour_bin, time_bin (number of 5-minutes bin) sequences for each path extracted
         # sequence of driving_state vectors extracted for each cell for each path
-        with open('./processed_data/' + input_file, 'r') as file:
-            self.content = file.readlines()
-        self.content = [json.loads(x) for x in self.content]
-        self.lengths = [len(x['G_X']) for x in self.content]
 
-        with open('./traffic_features/short_ttf', 'r') as file:
-            self.short_ttf = file.readlines()
-        self.short_ttf = [ast.literal_eval(x) for x in self.short_ttf]
+        # print("read begin "+time.strftime("%H:%M:%S".format(time.localtime(time.time()))))
+        # with open('./processed_data/' + input_file, 'rb') as file:
+        #     self.content = pickle.load(file)
+        # print("length begin " + time.strftime("%H:%M:%S".format(time.localtime(time.time()))))
+        # self.lengths = [x[1]['day_bin'].shape[1] for x in self.content]
 
-        with open('./traffic_features/long_ttf', 'r') as file:
-            self.long_ttf = file.readlines()
-        self.long_ttf = [ast.literal_eval(x) for x in self.long_ttf]
+        # input_file = 'val'
+        # with open('./processed_data/' + input_file, 'r') as file:
+        #     print("read start"+time.strftime("%H:%M:%S".format(time.localtime(time.time()))))
+        #     self.content = file.readlines()  # todo
+        # print("load begin"+time.strftime("%H:%M:%S".format(time.localtime(time.time()))))
+        # self.content = [json.loads(x) for x in self.content]
+        with open('./processed_data/' + input_file, 'rb') as file:
+            print("read start"+time.strftime("%H:%M:%S".format(time.localtime(time.time()))))
+            self.content = pickle.load(file)  # todo
+        # with open('./processed_data/' + 'trainjson.json', 'r') as file:
+        #     print("read start" + time.strftime("%H:%M:%S".format(time.localtime(time.time()))))
+        #     self.content = json.load(file)['data']
+
+        # print("length begin"+time.strftime("%H:%M:%S".format(time.localtime(time.time()))))
+        # self.lengths = [len(x['G_X']) for x in self.content]
+
+        # # with open('./traffic_features/short_ttf', 'r') as file:
+        # #     self.short_ttf = file.readlines()
+        # # self.short_ttf = [ast.literal_eval(x) for x in self.short_ttf]
+        # #
+        # # with open('./traffic_features/long_ttf', 'r') as file:
+        # #     self.long_ttf = file.readlines()
+        # # self.long_ttf = [ast.literal_eval(x) for x in self.long_ttf]
+        # # self.short_ttf = [ast.literal_eval(x) for x in self.short_ttf]
+        # with open('./traffic_features/short_ttf.pkl', 'rb') as file:
+        #     self.short_ttf = pickle.load(file)
+        # with open('./traffic_features/long_ttf.pkl', 'rb') as file:
+        #     self.long_ttf = pickle.load(file)
 
     def __getitem__(self, idx):
         return self.content[idx]
@@ -269,19 +294,35 @@ class BatchSampler:
     def __len__(self):
         return (self.count + self.batch_size - 1) // self.batch_size
 
+def myco(data):
+    return data[0]
 
 def get_loader(input_file, batch_size):
     dataset = MySet(input_file = input_file)
+    print("opendataset")
 
-    batch_sampler = BatchSampler(dataset, batch_size)
-
+    # batch_sampler = BatchSampler(dataset, batch_size)
+    # print("getbatchsampler")
+    # data_loader = DataLoader(
+    #     dataset = dataset,
+    #     collate_fn = lambda x: collate_fn(x, dataset.short_ttf, dataset.long_ttf),
+    #     # num_workers = 1, # set to one for easy debugging
+    #     batch_sampler = batch_sampler,
+    #     # pin_memory = True
+    #
+    # )
     data_loader = DataLoader(
         dataset = dataset,
-        batch_size = 1,
-        collate_fn = lambda x: collate_fn(x, dataset.short_ttf, dataset.long_ttf),
-        num_workers = 1, # set to one for easy debugging
-        batch_sampler = batch_sampler,
-        pin_memory = True
+
+        # collate_fn = lambda x: collate_fn(x, dataset.short_ttf, dataset.long_ttf),
+        # num_workers = 1, # set to one for easy debugging
+        # batch_sampler = batch_sampler,
+        # pin_memory = True
+
+        collate_fn=myco,
+        batch_size=batch_size,
+        shuffle=True
     )
 
+    print("getdataloader")
     return data_loader

@@ -34,6 +34,7 @@ class DeepTravel(nn.Module):
         V_sp, V_tp = self.spatial_temporal(stats, temporal, spatial)    # [path_len, 10]; [path_len, 12]
 
         V_dri = dr_state.view(-1, 4)                                    # [path_len, 4]
+        # print(short_ttf)
         V_short = self.short_term_lstm(short_ttf)                       # [300] for each cell
         V_long = self.long_term_lstm(long_ttf)                          # [100] for each cell
 
@@ -46,7 +47,7 @@ class DeepTravel(nn.Module):
         return H_cells
 
     def dual_loss(self, H_cells, times, borders, mask):
-
+        device = 'cuda'
         n = len(H_cells)
 
         h_f = []
@@ -61,7 +62,7 @@ class DeepTravel(nn.Module):
         T_f_hat = self.linear(torch.stack(h_f)).squeeze(dim=1)
         T_b_hat = self.linear(torch.stack(h_b)).squeeze(dim=1)
 
-        T_b_hat = torch.cat([T_b_hat, torch.Tensor([0]).cuda()])
+        T_b_hat = torch.cat([T_b_hat, torch.Tensor([0]).to(device)])
 
         M = np.zeros(n)
         T_f = np.ones(n)
@@ -75,9 +76,9 @@ class DeepTravel(nn.Module):
                 T_f[ind] = borders[ind]
                 T_b[ind] = times[-1] - borders[ind]
 
-        M = torch.Tensor(M).cuda()
-        T_f = torch.Tensor(T_f).cuda()
-        T_b = torch.Tensor(T_b).cuda()
+        M = torch.Tensor(M).to(device)
+        T_f = torch.Tensor(T_f).to(device)
+        T_b = torch.Tensor(T_b).to(device)
 
         loss = (M * ((T_f_hat - T_f) / T_f) ** 2 + M * ((T_b_hat - T_b) / T_b) ** 2) / (M * 2)
 

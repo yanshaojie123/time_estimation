@@ -47,6 +47,7 @@ def test_model(model, data_loader, args):
     print(metric)
     with open('data/result_TTEModel.txt', 'a') as f:
         f.write(f"epoch:{args.epochs} lr:{args.lr}\ndataset:{args.dataset} identify:{args.identify}\n")
+        f.write(f"{args.model_config}\n")
         f.write(f"{metric}\n\n")
 
 

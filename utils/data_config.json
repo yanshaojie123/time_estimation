@@ -50,7 +50,7 @@
     "time_mean": 0,
     "time_std": 1
   },
-  "porto_TTEModel": {
+  "porto_TTEModeltest": {
     "data_dir": "data/porto/portotest",
     "batch_size": 32,
     "collate_fn": "portoedge"
@@ -65,7 +65,7 @@
     "batch_size": 8,
     "collate_fn": "portoedge"
   },
-  "porto_TTEModel4": {
+  "porto_TTEModel": {
     "data_dir": "data/porto/portotrain",
     "batch_size": 8,
     "collate_fn": "portoedge"

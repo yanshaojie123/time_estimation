@@ -100,6 +100,7 @@ def calculate_metrics(preds, labels, args, null_val=0.0, plot=False, inds=None):
         # print(pearsonr(preds, labels))
         scaler = args.scaler
         preds = scaler.inverse_transform(preds.reshape([-1,1])).squeeze()
+        preds = (preds - np.mean(preds))/np.std(preds) * 231.2591+490.5749
         labels = scaler.inverse_transform(labels.reshape([-1,1])).squeeze()
         if plot:
             plt.scatter(preds, labels)

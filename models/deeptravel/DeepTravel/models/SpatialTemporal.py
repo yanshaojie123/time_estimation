@@ -13,7 +13,7 @@ class SpatialTemporal(nn.Module):
     temporal_emb_dims = [
         ('day_bin', 7, 100),
         ('hour_bin', 24, 100),
-        ('time_bin', 287, 100)
+        ('time_bin', 288, 100)
     ]
 
     def __init__(self):
@@ -36,15 +36,20 @@ class SpatialTemporal(nn.Module):
             embed = getattr(self, name + '_em')
             temporal_t = temporal[name].view(-1, 1)
             temporal_t = torch.squeeze(embed(temporal_t))
-            V_tp.append(temporal_t)
+            # print(temporal_t.shape)
+            V_tp.append(temporal_t.reshape(-1,100))
 
         V_sp = []
         for name, dim_in, dim_out in SpatialTemporal.spatial_emb_dims:
             embed = getattr(self, name + '_em')
             spatial_t = spatial[name].view(-1, 1)
             spatial_t = torch.squeeze(embed(spatial_t))
-            V_sp.append(spatial_t)
-
-        V_tp = torch.cat(V_tp, dim=1)           # [300]
+            V_sp.append(spatial_t.reshape(-1, 100))
+        try:
+            V_tp = torch.cat(V_tp, dim=1)           # [300]
+        except Exception as e:
+            print(V_tp)
+            raise e
+        # print(V_tp.shape)
         V_sp = torch.cat(V_sp, dim=1)           # [200]
         return V_sp, V_tp

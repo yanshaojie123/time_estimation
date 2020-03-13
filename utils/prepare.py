@@ -227,7 +227,7 @@ def load_datadict(args):
         phases = ['train', 'val', 'test']
 
     for phase in phases:
-        data[phase] = np.load(os.path.join(data_config['data_dir'], phase + '.npy'))
+        data[phase] = np.load(os.path.join(data_config['data_dir'], phase + '.npy'), allow_pickle=True)
 
     for phase in phases:
         print(data[phase].shape)

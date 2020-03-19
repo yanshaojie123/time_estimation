@@ -19,6 +19,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     print(args.model)
-    print(args.dataset)
-    train_main(args)
+    if args.model == "deeptravel":
+        from models.deeptravel.DeepTravel.main import main
+        main()
+    else:
+        print(args.dataset)
+        train_main(args)
     sys.exit(0)

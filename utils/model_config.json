@@ -1,11 +1,11 @@
 {
-  "deeptte": {
-    "kernel_size": 3,
+  "DeepTTE": {
+    "kernel_size": 2,
     "num_filter": 32,
     "pooling_method": "mean",
     "num_final_fcs": 3,
     "final_fc_size": 128,
-    "alpha": 0.3,
+    "alpha": 0,
     "lossinside": 1
   },
   "TTEModelb": {
@@ -19,8 +19,8 @@
     "input_dim": 55,
     "out_dim": 20,
     "seq_input_dim": 52,
-    "seq_hidden_dim": 30,
-    "seq_layer": 3
+    "seq_hidden_dim": 128,
+    "seq_layer": 2
   },
   "TTEModelo": {
     "input_dim": 22,

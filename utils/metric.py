@@ -88,7 +88,7 @@ def masked_mape_np(preds, labels, null_val=np.nan):
 #     return loss
 
 
-def calculate_metrics(preds, labels, args, null_val=0.0, plot=False, inds=None):  # todo: delete one from this and evaluate()
+def calculate_metrics(preds, labels, args = None, null_val=0.0, plot=False, inds=None):  # todo: delete one from this and evaluate()
     """
     Calculate the MAE, MAPE, RMSE
     :param df_pred:
@@ -98,14 +98,22 @@ def calculate_metrics(preds, labels, args, null_val=0.0, plot=False, inds=None):
     """
     try:
         # print(pearsonr(preds, labels))
-        scaler = args.scaler
-        preds = scaler.inverse_transform(preds.reshape([-1,1])).squeeze()
-        preds = (preds - np.mean(preds))/np.std(preds) * 231.2591+490.5749
-        labels = scaler.inverse_transform(labels.reshape([-1,1])).squeeze()
-        if plot:
-            plt.scatter(preds, labels)
-            plt.axis('equal')
-            plt.show()
+        # print(1)
+        try:
+            scaler = args.scaler
+            preds = scaler.inverse_transform(preds.reshape([-1,1])).squeeze()
+            # print(2)
+            # preds = (preds - np.mean(preds))/np.std(preds) * 231.2591+490.5749
+            # preds = (preds - np.mean(preds))/np.std(preds) * 227.6324 + 495.88559451758
+            # print(3)
+            labels = scaler.inverse_transform(labels.reshape([-1,1])).squeeze()
+        except:
+            print("no scale")
+        # print(4)
+        # if plot:
+        #     plt.scatter(preds, labels)
+        #     plt.axis('equal')
+        #     plt.show()
         print(preds[:10])
         print(labels[:10])
         mape = masked_mape_np(preds, labels, 0.0)

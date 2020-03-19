@@ -5,7 +5,7 @@ import json
 
 from math import radians, cos, sin, asin, sqrt
 
-config = json.load(open('./config.json', 'r'))
+config = json.load(open('./models/deeptravel/DeepTravel/config.json', 'r'))
 
 
 def geo_distance(lon1, lat1, lon2, lat2):

@@ -1,73 +1,29 @@
 {
-  "chengdu_sample": {
-    "data_dir": "data/chengdu_sample",
-    "batch_size": 128,
+  "porto_DeepTTE": {
+    "data_dir": "data/porto/deeptte",
+    "batch_size": 400,
     "collate_fn": "cdtte",
-    "dist_gap_mean": 0.274716042312,
-    "dist_gap_std": 0.127051674693,
-    "time_gap_mean": 43.8756927994,
-    "time_gap_std": 51.4811932987,
-    "lngs_std": 0.04988770679679998,
-    "lngs_mean": 104.05810954320589,
-    "lats_mean": 30.652312982784895,
-    "dist_std": 3.9656010701306283,
-    "dist_mean": 9.578281194509781,
-    "lats_std": 0.04154695076189434,
-    "time_mean": 1555.75269436,
-    "time_std": 646.373021152
-  },
-  "porto": {
-    "data_dir": "data/porto",
-    "batch_size": 128,
-    "collate_fn": "cdtte",
-    "dist_gap_mean": 0,
-    "dist_gap_std": 1,
-    "time_gap_mean": 0,
-    "time_gap_std": 1,
-    "lngs_std": 1,
-    "lngs_mean": 0,
-    "lats_mean": 0,
-    "dist_std": 1,
-    "dist_mean": 0,
-    "lats_std": 1,
-    "time_mean": 0,
-    "time_std": 1
-  },
-  "portotest": {
-    "data_dir": "data/tt",
-    "batch_size": 128,
-    "collate_fn": "cdtte",
-    "dist_gap_mean": 0,
-    "dist_gap_std": 1,
-    "time_gap_mean": 0,
-    "time_gap_std": 1,
-    "lngs_std": 1,
-    "lngs_mean": 0,
-    "lats_mean": 0,
-    "dist_std": 1,
-    "dist_mean": 0,
-    "lats_std": 1,
-    "time_mean": 0,
-    "time_std": 1
-  },
-  "porto_TTEModeltest": {
-    "data_dir": "data/porto/portotest",
-    "batch_size": 32,
-    "collate_fn": "portoedge"
-  },
-  "porto_TTEModel2": {
-    "data_dir": "data/porto/portotrain_withgps",
-    "batch_size": 128,
-    "collate_fn": "portoedge"
-  },
-  "porto_TTEModel3": {
-    "data_dir": "data/porto/portotrain_withhlratio",
-    "batch_size": 8,
-    "collate_fn": "portoedge"
+    "dist_gap_mean": 2.2988323342784773,
+    "dist_gap_std": 2.0417274814385378,
+    "time_gap_mean": 298.65283964451595,
+    "time_gap_std": 231.12246469467635,
+    "lngs_mean": -8.620548200339684,
+    "lngs_std": 0.0234710221052792,
+    "lats_mean": 41.15796787895683,
+    "lats_std": 0.009660027135709211,
+    "dist_mean": 3.4522945117945953,
+    "dist_std": 2.0261831465087803,
+    "time_mean": 495.88559451758,
+    "time_std": 227.6324670811022
   },
   "porto_TTEModel": {
     "data_dir": "data/porto/portotrain",
     "batch_size": 8,
     "collate_fn": "portoedge"
+  },
+  "chengdu_TTEModel": {
+    "data_dir": "data/chengdu/TTEModel",
+    "batch_size": 8,
+    "collate_fn": "chengduTTE"
   }
 }

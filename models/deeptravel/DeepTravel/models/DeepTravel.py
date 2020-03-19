@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from models.ShortLongTrafficFeatures import  ShortTermLSTM, LongTermLSTM
-from models.SpatialTemporal import SpatialTemporal
-from models.PredictionBiLSTM import PredictionBiLSTM
+from models.deeptravel.DeepTravel.models.ShortLongTrafficFeatures import  ShortTermLSTM, LongTermLSTM
+from models.deeptravel.DeepTravel.models.SpatialTemporal import SpatialTemporal
+from models.deeptravel.DeepTravel.models.PredictionBiLSTM import PredictionBiLSTM
 
 
 class DeepTravel(nn.Module):
@@ -40,7 +40,7 @@ class DeepTravel(nn.Module):
 
         V_cells = []
         for i in range(len(short_ttf)):
-            V_cells.append(torch.cat([V_sp[0], V_tp[0], V_dri[0], V_short[0], V_long[0]]))      # path_len x [904]
+            V_cells.append(torch.cat([V_sp[i], V_tp[i], V_dri[i], V_short[i], V_long[i]]))      # path_len x [904]
 
         H_cells = self.prediction(V_cells)
 
@@ -80,12 +80,12 @@ class DeepTravel(nn.Module):
         T_f = torch.Tensor(T_f).to(device)
         T_b = torch.Tensor(T_b).to(device)
 
-        loss = (M * ((T_f_hat - T_f) / T_f) ** 2 + M * ((T_b_hat - T_b) / T_b) ** 2) / (M * 2)
+        loss = (M * ((T_f_hat - T_f) / T_f) ** 2 + M * ((T_b_hat - T_b) / T_b) ** 2) / (M * 2 + 1e-5)  # lajijijijijijij!!!!!!
 
         # Temporary forced operation
         loss[loss != loss] = 0
 
-        return loss
+        return loss, T_f_hat[-1].detach().cpu().numpy(), T_f[-1].detach().cpu().numpy()
 
     def init_weight(self):
         for name, param in self.named_parameters():

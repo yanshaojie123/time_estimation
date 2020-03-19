@@ -34,16 +34,21 @@ class SpatialTemporal(nn.Module):
         V_tp = []
         for name, dim_in, dim_out in SpatialTemporal.temporal_emb_dims:
             embed = getattr(self, name + '_em')
-            temporal_t = temporal[name].view(-1, 1)
-            temporal_t = torch.squeeze(embed(temporal_t))
+            temporal_n = temporal[name].reshape(-1, 1)
+            temporal_t = torch.squeeze(embed(temporal_n))
             # print(temporal_t.shape)
+            if torch.sum(torch.isnan(temporal_t)!=0):
+                print(temporal_n[torch.isnan(temporal_t)[:,0]])
+                print(1)
             V_tp.append(temporal_t.reshape(-1,100))
 
         V_sp = []
         for name, dim_in, dim_out in SpatialTemporal.spatial_emb_dims:
             embed = getattr(self, name + '_em')
-            spatial_t = spatial[name].view(-1, 1)
-            spatial_t = torch.squeeze(embed(spatial_t))
+            spatial_n = spatial[name].reshape(-1, 1)
+            spatial_t = torch.squeeze(embed(spatial_n))
+            if torch.sum(torch.isnan(temporal_t)!=0):
+                print(1)
             V_sp.append(spatial_t.reshape(-1, 100))
         try:
             V_tp = torch.cat(V_tp, dim=1)           # [300]

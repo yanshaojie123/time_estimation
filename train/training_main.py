@@ -8,7 +8,7 @@ from torch import optim
 import numpy as np
 
 from train.train_model import train_model
-from utils.prepare import load_dataset, create_model, create_loss, load_datadict
+from utils.prepare import create_model, create_loss, load_datadict
 from utils.metric import calculate_metrics
 from utils.util import to_var
 
@@ -40,12 +40,9 @@ def test_model(model, data_loader, args):
         inds = np.concatenate(inds)
     else:
         inds = None
-    # print(calculate_metrics(pre2[:, :3], tar2[:, :3], **params))
-    # print(calculate_metrics(pre2[:, :6], tar2[:, :6], **params))
-    # print(calculate_metrics(pre2[:, :9], tar2[:, :9], **params))
     metric = calculate_metrics(pre2, tar2, args, plot=True, inds=inds)
     print(metric)
-    with open('data/result_TTEModel.txt', 'a') as f:
+    with open(f'data/result_{args.model}.txt', 'a') as f:
         f.write(f"epoch:{args.epochs} lr:{args.lr}\ndataset:{args.dataset} identify:{args.identify}\n")
         f.write(f"{args.model_config}\n")
         f.write(f"{metric}\n\n")

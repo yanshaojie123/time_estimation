@@ -2,22 +2,25 @@ import json
 import torch
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
-import logger
+from models.deeptravel.DeepTravel import logger
 
-from models.DeepTravel import DeepTravel
+from models.deeptravel.DeepTravel.models.DeepTravel import DeepTravel
 
-import utils
-import data_loader
+from models.deeptravel.DeepTravel import utils
+from models.deeptravel.DeepTravel import data_loader
 import copy
 from tqdm import tqdm
 import time
+from utils.metric import calculate_metrics
+import numpy as np
+
 
 def train(model, train_set, eval_set, dt_logger):
 
     if torch.cuda.is_available():
         model.cuda()
     print("train_begin "+time.strftime("%H:%M:%S".format(time.localtime(time.time()))))
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     # train_iter = data_loader.get_loader(train_set[0], 128)
     # val_iter = data_loader.get_loader(eval_set[0], 128)
     num_of_epochs = 10
@@ -31,6 +34,7 @@ def train(model, train_set, eval_set, dt_logger):
             datatime = 0
             modeltime = 0
             backtime = 0
+            predictions, targets = list(), list()
             for idx, (stats, temporal, spatial, dr_state, short_ttf, long_ttf, helpers) in tqdm_loader:
                 try:
                 # if True:
@@ -41,7 +45,10 @@ def train(model, train_set, eval_set, dt_logger):
                     dt = time.time()
                     datatime += dt-start
 
-                    loss = model.evaluate(stats, temporal, spatial, dr_state, short_ttf, long_ttf, helpers)
+                    loss, pred, target = model.evaluate(stats, temporal, spatial, dr_state, short_ttf, long_ttf, helpers)
+                    # print(loss.shape)
+                    predictions.append(pred)
+                    targets.append(target)
                     mt = time.time()
                     modeltime += mt-dt
 
@@ -59,8 +66,9 @@ def train(model, train_set, eval_set, dt_logger):
                 # print(f"datatime:{datatime/(idx+1)}")
                 # print(f"modeltime:{modeltime/(idx+1)}")
                 # print(f"backtime:{backtime/(idx+1)}")
-            print(f"epoch:{epoch} loss:{running_loss}")
-        torch.save(copy.deepcopy(model.state_dict()), f'./save/{epoch}.pkl')
+            score = calculate_metrics(np.asarray(predictions), np.asarray(targets))
+            print(score)
+        torch.save(copy.deepcopy(model.state_dict()), f'./models/deeptravel/DeepTravel/save/{epoch}.pkl')
 
     # for data_file in train_set:
     #
@@ -84,7 +92,7 @@ def train(model, train_set, eval_set, dt_logger):
 
 
 def main():
-    config = json.load(open('./config.json', 'r'))
+    config = json.load(open('./models/deeptravel/DeepTravel/config.json', 'r'))
     dt_logger = logger.get_logger()
 
     model = DeepTravel()

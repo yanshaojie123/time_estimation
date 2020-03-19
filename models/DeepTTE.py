@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-
+import numpy as np
 EPS = 10
 
 
@@ -30,7 +30,7 @@ def get_local_seq(full_seq, kernel_size, mean=0, std=1):
 
 
 class Attr(nn.Module):
-    embed_dims = [('driverID', 24000, 16), ('weekID', 7, 3), ('timeID', 1440, 8)]  # todo: adaptive embeded_dim
+    embed_dims = [('driverID', 24000, 8), ('weekID', 7, 3), ('timeID', 1440, 16)]
 
     def __init__(self):
         super(Attr, self).__init__()
@@ -38,12 +38,12 @@ class Attr(nn.Module):
         for name, dim_in, dim_out in Attr.embed_dims:
             self.add_module(name + '_em', nn.Embedding(dim_in, dim_out))
 #
-#     # def out_size(self):
-#     #     sz = 0
-#     #     for name, dim_in, dim_out in Attr.embed_dims:
-#     #         sz += dim_out
-#     #     # append total distance
-#     #     return sz + 1
+    def out_size(self):
+        sz = 0
+        for name, dim_in, dim_out in Attr.embed_dims:
+            sz += dim_out
+        # append total distance
+        return sz + 1
 
     def forward(self, attr, config):
         '''
@@ -60,12 +60,14 @@ class Attr(nn.Module):
             # print(attr_t.device)
             attr_t = torch.squeeze(embed(attr_t))
             em_list.append(attr_t)
+        # em_list[2] = torch.ones(em_list[2].shape).to(em_list[0].device)
 
         # dist_mean = config.data_config['dist_mean']
         # dist_std = config.data_config['dist_std']
         # dist = (attr['dist'] - dist_mean) / dist_std
+        # em_list.append(dist.view(-1, 1))
+        # attr['dist'] = torch.ones(attr['dist'].shape).to(attr['dist'].device)
         em_list.append(attr['dist'].view(-1, 1))
-        # em_list.append(attr['dist'].view(-1, 1))
 
         return torch.cat(em_list, dim=1)
 
@@ -107,11 +109,11 @@ class GeoConv(nn.Module):
 
         # conv_locs: (B, Seqlen-kernel_size+1, num_filter)
         # calculate the dist for local paths
-        local_dist = get_local_seq(traj['dist_gap'], self.kernel_size)
+
 
         dist_gap_mean = config.data_config['dist_gap_mean']
         dist_gap_std = config.data_config['dist_gap_std']
-        local_dist = (local_dist - dist_gap_mean) / dist_gap_std
+        local_dist = get_local_seq(traj['dist_gap'], self.kernel_size, mean=dist_gap_mean, std=dist_gap_std)
         local_dist = torch.unsqueeze(local_dist, dim=2)
 
         conv_locs = torch.cat((conv_locs, local_dist), dim=2)
@@ -146,41 +148,45 @@ class SpatioTemporal(nn.Module):
                               batch_first=True
                               )
 
-#         if pooling_method == 'attention':
-#             self.attr2atten = nn.Linear(attr_size, 128)
-#
+        if pooling_method == 'attention':
+            self.attr2atten = nn.Linear(attr_size, 128)
+
+    def out_size(self):
+        return 128
 
     def mean_pooling(self, hiddens, lens):
         # note that in pad_packed_sequence, the hidden states are padded with all 0
         hiddens = torch.sum(hiddens, dim=1, keepdim=False)
-        lens = lens.to(hiddens.device)
-#         if torch.cuda.is_available():
-#             lens = torch.cuda.FloatTensor(lens)
-#         else:
-#             lens = torch.FloatTensor(lens)
-#
+        lens = np.asarray(lens, dtype="float")
+        lens = torch.Tensor(lens).to(hiddens.device)
+        # lens = lens.to(hiddens.device)
+        # if torch.cuda.is_available():
+        #     lens = torch.cuda.FloatTensor(lens)
+        # else:
+        #     lens = torch.FloatTensor(lens)
+
         lens = Variable(torch.unsqueeze(lens, dim=1), requires_grad=False)
 
         hiddens = hiddens / lens
 
         return hiddens
 
-#     def attent_pooling(self, hiddens, lens, attr_t):  # todo: attention pooling
-#         attent = F.tanh(self.attr2atten(attr_t)).permute(0, 2, 1)
-#
-#         # hidden b*s*f atten b*f*1 alpha b*s*1 (s is length of sequence)
-#         alpha = torch.bmm(hiddens, attent)
-#         alpha = torch.exp(-alpha)
-#
-#         # The padded hidden is 0 (in pytorch), so we do not need to calculate the mask
-#         alpha = alpha / torch.sum(alpha, dim=1, keepdim=True)
-#
-#         hiddens = hiddens.permute(0, 2, 1)
-#         hiddens = torch.bmm(hiddens, alpha)
-#         hiddens = torch.squeeze(hiddens)
-#
-#         return hiddens
-#
+    def attent_pooling(self, hiddens, lens, attr_t):
+        attent = F.tanh(self.attr2atten(attr_t)).permute(0, 2, 1)
+
+        # hidden b*s*f atten b*f*1 alpha b*s*1 (s is length of sequence)
+        alpha = torch.bmm(hiddens, attent)
+        alpha = torch.exp(-alpha)
+
+        # The padded hidden is 0 (in pytorch), so we do not need to calculate the mask
+        alpha = alpha / torch.sum(alpha, dim=1, keepdim=True)
+
+        hiddens = hiddens.permute(0, 2, 1)
+        hiddens = torch.bmm(hiddens, alpha)
+        hiddens = torch.squeeze(hiddens)
+
+        return hiddens
+
     def forward(self, traj, attr_t, config):
         conv_locs = self.geo_conv(traj, config)
 
@@ -189,7 +195,9 @@ class SpatioTemporal(nn.Module):
         expand_attr_t = attr_t.expand(conv_locs.size()[:2] + (attr_t.size()[-1],))
 
         # concat the loc_conv and the attributes
+        # conv_locs = torch.ones(conv_locs.shape).to(conv_locs.device)
         conv_locs = torch.cat((conv_locs, expand_attr_t), dim=2)
+        # conv_locs = torch.ones(conv_locs.shape).to(conv_locs.device)
 
         lens = list(map(lambda x: x - self.kernel_size + 1, traj['lens']))
 
@@ -201,8 +209,8 @@ class SpatioTemporal(nn.Module):
         if self.pooling_method == 'mean':
             return packed_hiddens, lens, self.mean_pooling(hiddens, lens)
 
-#         elif self.pooling_method == 'attention':
-#             return packed_hiddens, lens, self.attent_pooling(hiddens, lens, attr_t)
+        elif self.pooling_method == 'attention':
+            return packed_hiddens, lens, self.attent_pooling(hiddens, lens, attr_t)
 
 
 class EntireEstimator(nn.Module):
@@ -248,17 +256,6 @@ class LocalEstimator(nn.Module):
 
         return out
 
-    def eval_on_batch(self, pred, lens, label, mean, std):
-        label = nn.utils.rnn.pack_padded_sequence(label, lens, batch_first=True)[0]
-        label = label.view(-1, 1)
-
-        label = label * std + mean
-        pred = pred * std + mean
-
-        loss = torch.abs(pred - label) / (label + EPS)
-
-        return loss.mean()
-
 
 class DeepTTE(nn.Module):
     def __init__(self, kernel_size=3, num_filter=32, pooling_method='attention', num_final_fcs=3, final_fc_size=128,
@@ -271,10 +268,10 @@ class DeepTTE(nn.Module):
         self.final_fc_size = final_fc_size
         self.alpha = alpha
 
-        rnn_size = 128
-        attr_size = 28
         self.attr_net = Attr()
-        self.spatio_temporal = SpatioTemporal(attr_size=attr_size,  # todo: outsize
+        rnn_size = 128
+        attr_size = self.attr_net.out_size()
+        self.spatio_temporal = SpatioTemporal(attr_size=attr_size,
                                               kernel_size=self.kernel_size,
                                               num_filter=self.num_filter,
                                               pooling_method=self.pooling_method,
@@ -303,33 +300,31 @@ class DeepTTE(nn.Module):
             traj[key] = (traj[key] - config.data_config[key+'_mean']) / config.data_config[key+'_std']
 
         attr_t = self.attr_net(attr, config)
-
+        # attr_t = torch.ones(attr_t.shape).to(attr_t.device)
         # sptm_s: hidden sequence (B * T * F); sptm_l: lens (list of int); sptm_t: merged tensor after attention/mean pooling
         sptm_s, sptm_l, sptm_t = self.spatio_temporal(traj, attr_t, config)
-
+        # sptm_t = torch.ones(sptm_t.shape).to(sptm_t.deivce)
         entire_out = self.entire_estimate(attr_t, sptm_t)
-        entire_label = truth_data.view(-1, 1)
 
+        entire_label = truth_data.view(-1, 1)
         entire_std = config.data_config['time_std']
         entire_mean = config.data_config['time_mean']
         # entire_label = entire_label * entire_std + entire_mean
         entire_out = entire_out * entire_std + entire_mean
 
         entire_loss = torch.abs(entire_out - entire_label) / entire_label
-
         entire_loss = entire_loss.mean()
+
         # sptm_s is a packed sequence (see pytorch doc for details), only used during the training
         if self.training:
-            local_pred = self.local_estimate(sptm_s[0])
-
             # get ground truth of each local path
+            local_mean = (self.kernel_size - 1) * config.data_config['time_gap_mean']
+            local_std = (self.kernel_size - 1) * config.data_config['time_gap_std']
             local_label = get_local_seq(traj['time_gap'], self.kernel_size)
             local_label = nn.utils.rnn.pack_padded_sequence(local_label, sptm_l, batch_first=True, enforce_sorted=False)[0]
             local_label = local_label.view(-1, 1)
 
-            local_mean = (self.kernel_size - 1) * config.data_config['time_gap_mean']
-            local_std = (self.kernel_size - 1) * config.data_config['time_gap_std']
-            # local_label = local_label * local_std + local_mean
+            local_pred = self.local_estimate(sptm_s[0])
             local_pred = local_pred * local_std + local_mean
 
             local_loss = torch.abs(local_pred - local_label) / (local_label + EPS)

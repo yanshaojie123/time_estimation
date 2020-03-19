@@ -67,14 +67,15 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
 
                     # For the issue that the CPU memory increases while training. DO NOT know why, but it works.
                     torch.cuda.empty_cache()
-
                 # 性能
                 predictions = np.concatenate(predictions)
                 targets = np.concatenate(targets)
+                # print(2)
                 # print(predictions[:3, :3])
                 # print(targets[:3, :3])
                 scores = calculate_metrics(predictions.reshape(predictions.shape[0], -1),
                                            targets.reshape(targets.shape[0], -1), args, plot=epoch % 5 == 0, **kwargs)
+                # print(3)
                 writer.add_scalars(f'score/{phase}', scores, global_step=epoch)
                 print(scores)
                 if phase == 'val' and scores['RMSE'] < best_rmse:

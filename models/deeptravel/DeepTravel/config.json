@@ -21,8 +21,7 @@
     "dist_std": 1.3844477606746721,
     "time_mean": 503.0369792729499,
     "time_std": 228.92746811060982,
-    "train_set": ["aftercoll/train_1.pkl", "aftercoll/train_2.pkl", "aftercoll/train_3.pkl", "aftercoll/train_4.pkl"
-    , "aftercoll/train_5.pkl", "aftercoll/train_6.pkl", "aftercoll/train_7.pkl", "aftercoll/train_8.pkl"],
+    "train_set": ["aftercollate/train_1.pkl", "aftercollate/train_2.pkl", "aftercollate/train_3.pkl", "aftercollate/train_4.pkl", "aftercollate/train_5.pkl", "aftercollate/train_6.pkl", "aftercollate/train_7.pkl", "aftercollate/train_8.pkl", "aftercollate/train_9.pkl", "aftercollate/train_10.pkl", "aftercollate/train_11.pkl", "aftercollate/train_12.pkl", "aftercollate/train_13.pkl", "aftercollate/train_14.pkl", "aftercollate/train_15.pkl", "aftercollate/train_16.pkl", "aftercollate/train_17.pkl", "aftercollate/train_18.pkl", "aftercollate/train_19.pkl", "aftercollate/train_20.pkl", "aftercollate/train_21.pkl"],
     "eval_set": ["val"],
     "test_set": ["test"]
 }

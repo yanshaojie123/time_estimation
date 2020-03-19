@@ -19,13 +19,14 @@ if __name__ == "__main__":
     # skip_gram_model.build_and_train(embed_size=get_attribute("region_embed_dim"), window_size=5, iter=50)
     skip_gram_model.build_and_train(embed_size=embed_size, window_size=window_size, iter=iteration)
 
-    ids = [str(i) for i in range(1, 11343)]
+    ids = [str(i) for i in range(1, 23965)]
 
     embeddings = skip_gram_model.get_embeddings(region_ids=ids)
+    res = {}
     for key, value in embeddings.items():
-        embeddings[int(key)] = value.tolist()
+        res[int(key)] = value.tolist()
 
     import pickle
-    with open('./edgesgdict.pkl', 'wb') as f:
-        pickle.dump(embeddings, f)
+    with open('./chengdu_sgdict.pkl', 'wb') as f:
+        pickle.dump(res, f)
     sys.exit(0)

@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from models.MHA import MyBlock
+import torch.nn.functional as F
 
 
 class TTEModel(nn.Module):
@@ -31,8 +32,9 @@ class TTEModel(nn.Module):
         self.output = nn.Sequential(
             nn.Linear(seq_hidden_dim, int(seq_hidden_dim/2)),
             nn.ReLU(),
-            nn.Linear(int(seq_hidden_dim/2), 1)
+            nn.Linear(int(seq_hidden_dim/2), 1),
         )
+        self.conv = nn.Conv1d(52, 52, 3, padding=False)
         # self.sequence = MyBlock(1, seq_input_dim, seq_hidden_dim, seq_input_dim, a_query=15, a_value=15)
         # self.output = nn.Sequential(
         #     nn.Linear(seq_input_dim, int(seq_hidden_dim/2)),
@@ -61,10 +63,13 @@ class TTEModel(nn.Module):
 
     def forward(self, inputs, args):
         feature = inputs['links']
+        # highway bridge tunnel week date time
+        # length sumlength lanes maxspeed width
+        # 32 Skip Gram embedding
         # date = inputs['date']
         lens = inputs['lens']
 
-        highwayrep = self.highwayembed(feature[:, :, 0].long())
+        highwayrep = self.highwayembed(feature[:, :, 0].long())  # index to vector
         bridgerep = self.bridgeembed(feature[:, :, 1].long())
         tunnelrep = self.tunnelembed(feature[:, :, 2].long())
         weekrep = self.weekembed(feature[:, :, 3].long())
@@ -83,8 +88,11 @@ class TTEModel(nn.Module):
         # representation = self.represent(torch.cat([feature[:, :, 6:43], highwayrep, bridgerep, tunnelrep, weekrep, daterep, timerep], dim=-1))
 
         representation = self.represent(torch.cat([feature[..., 6:11], highwayrep, bridgerep, tunnelrep, weekrep, daterep, timerep], dim=-1))
-        # representation = torch.cat([representation, feature[...,11:]], dim = -1)
-        representation = torch.cat([representation, torch.zeros(feature[...,11:].shape).to(args.device)], dim = -1)
+        representation = torch.cat([representation, feature[...,11:]], dim = -1)
+        # print(representation.shape)
+        # representation = F.elu(self.conv(representation.permute(0, 2, 1))).permute(0, 2, 1)
+        # lens = lens-2
+        # representation = torch.cat([representation, torch.zeros(feature[...,11:].shape).to(args.device)], dim = -1)
 
         # representation = torch.ones(representation.shape).to(representation.device)
 
@@ -99,6 +107,7 @@ class TTEModel(nn.Module):
         # pooled_hidden = hiddens[:, -1]
 
         output = self.output(pooled_hidden)
+        output = output * 231.2591+490.5749
         return output
 
         # return packed_hiddens, lens, self.mean_pooling(hiddens, lens)

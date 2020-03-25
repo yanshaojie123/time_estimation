@@ -28,7 +28,7 @@ def computedeeptravelmeanstd():
     import numpy as np
     import json
     data = [json.loads(d) for d in data]
-    data = np.load("deeptte/train.npy")
+    data = np.load("train.npy", allow_pickle=True)
     for k in ['dist_gap', 'time_gap', 'lngs',  'lats']:
         d = np.concatenate([da[k] for da in data])
         print(f'"{k}_mean": {np.mean(d)},')

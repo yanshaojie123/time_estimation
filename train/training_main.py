@@ -11,6 +11,7 @@ from train.train_model import train_model
 from utils.prepare import create_model, create_loss, load_datadict
 from utils.metric import calculate_metrics
 from utils.util import to_var
+import time
 
 
 def test_model(model, data_loader, args):
@@ -43,8 +44,10 @@ def test_model(model, data_loader, args):
     metric = calculate_metrics(pre2, tar2, args, plot=True, inds=inds)
     print(metric)
     with open(f'data/result_{args.model}.txt', 'a') as f:
+        f.write(time.strftime("%m/%d %H:%M:%S",time.localtime(time.time())))
         f.write(f"epoch:{args.epochs} lr:{args.lr}\ndataset:{args.dataset} identify:{args.identify}\n")
         f.write(f"{args.model_config}\n")
+        f.write(f"{args.data_config}\n")
         f.write(f"{metric}\n\n")
 
 
@@ -54,15 +57,17 @@ def train_main(args):
         sys.exit(0)
     print(f"{args.mode} {args.model}_{args.identify} on {args.dataset}")
     # 创建data_loader
-    data_loaders, scaler = load_datadict(args)  # todo
+    data_loaders, scaler = load_datadict(args)
     args.scaler = scaler
     model = create_model(args)
+    # model.load_state_dict(torch.load('data/save_models/TTEModel_gpsnorm_timebefore_porto_TTEModel/best_model.pkl')['model_state_dict'], strict=False)
     loss_func = create_loss(args)
 
     model_folder = f"data/save_models/{args.model}_{args.identify}_{args.dataset}"
     tensorboard_folder = f"runs/{args.model}_{args.identify}_{args.dataset}"
     model = model.to(args.device)
-
+    print(args.model_config)
+    print(args.data_config)
     # 训练
     if args.mode == 'train':
         if os.path.exists(model_folder):

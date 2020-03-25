@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-o', '--optim', type=str, default="Adam")
     parser.add_argument('-C', '--lossinside', type=bool, default=False)
-    parser.add_argument('-c', '--loss', type=str, default="masked_mse_loss")
+    parser.add_argument('-c', '--loss', type=str, default="mse")
     parser.add_argument('-e', '--epochs', type=int, default=50)
     parser.add_argument('-l', '--lr', type=float, default=0.001)
 

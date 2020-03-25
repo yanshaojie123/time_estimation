@@ -95,6 +95,7 @@ class GeoConv(nn.Module):
         lats = torch.unsqueeze(traj['lats'], dim=2)
         # print(traj.keys())
         states = self.state_em(traj['states'].long())
+        # states = torch.ones(states.shape).to(states.device)
 
         locs = torch.cat((lngs, lats, states), dim=2)
 
@@ -103,6 +104,8 @@ class GeoConv(nn.Module):
         locs = F.tanh(self.process_coords(locs))
 
         locs = locs.permute(0, 2, 1)
+        # locs = torch.ones(locs.shape).to(locs.device)
+        # ablation for gps
 
         # locs: (B, embedding_size, seqlen)
         conv_locs = F.elu(self.conv(locs)).permute(0, 2, 1)
@@ -117,6 +120,8 @@ class GeoConv(nn.Module):
         local_dist = torch.unsqueeze(local_dist, dim=2)
 
         conv_locs = torch.cat((conv_locs, local_dist), dim=2)
+        if torch.isnan(conv_locs.reshape(-1)[0]):
+            print(11)
         return conv_locs
 
 
@@ -188,15 +193,18 @@ class SpatioTemporal(nn.Module):
         return hiddens
 
     def forward(self, traj, attr_t, config):
-        conv_locs = self.geo_conv(traj, config)
+        conv_locsg = self.geo_conv(traj, config)
 
         attr_t = torch.unsqueeze(attr_t, dim=1)
         # attr_t): (B,1,attr_size)
-        expand_attr_t = attr_t.expand(conv_locs.size()[:2] + (attr_t.size()[-1],))
+        expand_attr_t = attr_t.expand(conv_locsg.size()[:2] + (attr_t.size()[-1],))
 
         # concat the loc_conv and the attributes
         # conv_locs = torch.ones(conv_locs.shape).to(conv_locs.device)
-        conv_locs = torch.cat((conv_locs, expand_attr_t), dim=2)
+        # ablation for gps
+
+        conv_locs = torch.cat((conv_locsg, expand_attr_t), dim=2)
+        #ablation for attr and gps
         # conv_locs = torch.ones(conv_locs.shape).to(conv_locs.device)
 
         lens = list(map(lambda x: x - self.kernel_size + 1, traj['lens']))
@@ -204,8 +212,10 @@ class SpatioTemporal(nn.Module):
         packed_inputs = nn.utils.rnn.pack_padded_sequence(conv_locs, lens, batch_first=True, enforce_sorted=False)
 
         packed_hiddens, (h_n, c_n) = self.rnn(packed_inputs)
-        hiddens, lens = nn.utils.rnn.pad_packed_sequence(packed_hiddens, batch_first=True)
 
+        hiddens, lens = nn.utils.rnn.pad_packed_sequence(packed_hiddens, batch_first=True)
+        if torch.isnan(hiddens.reshape(-1)[0]):
+            print(11)
         if self.pooling_method == 'mean':
             return packed_hiddens, lens, self.mean_pooling(hiddens, lens)
 
@@ -329,6 +339,8 @@ class DeepTTE(nn.Module):
 
             local_loss = torch.abs(local_pred - local_label) / (local_label + EPS)
             local_loss = local_loss.mean()
+            if torch.isnan(local_loss) or torch.isnan(entire_loss):
+                print("11")
 
             return (1 - self.alpha) * entire_loss + self.alpha * local_loss, entire_out
         else:

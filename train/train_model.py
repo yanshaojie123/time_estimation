@@ -24,7 +24,8 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
 
     since = time.clock()
 
-    save_dict, best_rmse = {'model_state_dict': copy.deepcopy(model.state_dict()), 'epoch': 0}, 100000
+    # save_dict, best_rmse = {'model_state_dict': copy.deepcopy(model.state_dict()), 'epoch': 0}, 100000
+    save_dict, best_pcc = {'model_state_dict': copy.deepcopy(model.state_dict()), 'epoch': 0}, 0
 
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=.2, patience=5, threshold=1e-3, min_lr=1e-6)
 
@@ -78,8 +79,10 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
                 # print(3)
                 writer.add_scalars(f'score/{phase}', scores, global_step=epoch)
                 print(scores)
-                if phase == 'val' and scores['RMSE'] < best_rmse:
-                    best_rmse = scores['RMSE'],
+                # if phase == 'val' and scores['RMSE'] < best_rmse:
+                if phase == 'val' and scores['pearr'] > best_pcc:
+                    best_pcc = scores['pearr']
+                    # best_rmse = scores['RMSE']
                     save_dict.update(model_state_dict=copy.deepcopy(model.state_dict()),
                                      epoch=epoch,
                                      optimizer_state_dict=copy.deepcopy(optimizer.state_dict()))

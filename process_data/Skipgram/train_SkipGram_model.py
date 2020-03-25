@@ -27,6 +27,6 @@ if __name__ == "__main__":
         res[int(key)] = value.tolist()
 
     import pickle
-    with open('./chengdu_sgdict.pkl', 'wb') as f:
+    with open('data/chengdu/chengdu_sgdictt.pkl', 'wb') as f:
         pickle.dump(res, f)
     sys.exit(0)

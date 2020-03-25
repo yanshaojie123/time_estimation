@@ -3,6 +3,7 @@ import numpy as np
 import math
 from math import pi
 import time
+from .deeptteprocess import geo_distance
 
 def chengdutopath(day):
     # import time
@@ -260,10 +261,34 @@ def unite():
         valdatas.append(np.load(f'{date}_val.npy', allow_pickle=True))
         testdatas.append(np.load(f'{date}_test.npy', allow_pickle=True))
     trainres = np.concatenate(traindatas)
-    np.save("train.npy", trainres)
     valres = np.concatenate(valdatas)
-    np.save("val.npy", valres)
     testres = np.concatenate(testdatas)
+    np.save("train.npy", trainres)
+    np.save("val.npy", valres)
     np.save("test.npy", testres)
+
+def deeptte():
+    testdict = []
+    for d in testres:
+        temp = dict()
+        temp["lats"] = d[2].tolist()
+        temp["lngs"] = d[3].tolist()
+        temp["time_gap"] = d[4]
+        temp["time"] = d[4][-1]
+        temp["states"] = [1 for _ in range(len(d[4]))]
+        temp["driverID"] = d[0]
+        timet = time.localtime(d[1])
+        temp["weekID"] = timet.tm_wday
+        temp["dateID"] = timet.tm_yday
+        temp["timeID"] = timet.tm_hour * 60 + timet.tm_min
+        temp["dist_gap"] = [geo_distance(temp['lngs'][i], temp['lats'][i], temp['lngs'][i+1], temp['lats'][i+1]) for i in range(len(temp['lngs'])-1)]
+        temp["dist_gap"].insert(0,0.0)
+        temp['dist_gap'] = np.cumsum(temp['dist_gap']).tolist()
+        temp["dist"] = temp["dist_gap"][-1]
+        testdict.append(temp)
+
+
+
+
 
 

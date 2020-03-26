@@ -79,22 +79,39 @@ class TTEModel(nn.Module):
         daterep = self.dateembed(feature[:, :, 4].long())
         timerep = self.timeembed(feature[:, :, 5].long())
         gpsrep = self.gpsrep(feature[:, :, 6:10])  # 16
-        # highwayrep = torch.zeros(list(highwayrep.shape)).to(args.device)
-        # weekrep = torch.zeros(list(weekrep.shape)).to(args.device)
-        # daterep = torch.zeros(list(daterep.shape)).to(args.device)
-        # timerep = torch.zeros(list(timerep.shape)).to(args.device)
-        # gpsrep = torch.zeros(list(gpsrep.shape)).to(args.device)
+        if "nohighway" in args.identify:
+            # print("nohighway")
+            highwayrep = torch.zeros(list(highwayrep.shape)).to(args.device)
+        if "notime" in args.identify:
+            # print("notime")
+            weekrep = torch.zeros(list(weekrep.shape)).to(args.device)
+            daterep = torch.zeros(list(daterep.shape)).to(args.device)
+            timerep = torch.zeros(list(timerep.shape)).to(args.device)
+        if "nogps" in args.identify:
+            # print("nogps")
+            gpsrep = torch.zeros(list(gpsrep.shape)).to(args.device)
 
-        # representation = self.represent(torch.cat([feature[..., 1:3], highwayrep, gpsrep], dim=-1))
+
         # representation = self.represent(torch.cat([feature[..., 1:3], feature[...,10:], highwayrep, gpsrep, weekrep, daterep, timerep], dim=-1))
-        representation = self.represent(torch.cat([feature[..., 1:3], highwayrep, gpsrep, weekrep, daterep, timerep], dim=-1))
         # representation = torch.cat([feature[..., 1:3], highwayrep, gpsrep, weekrep, daterep, timerep], dim=-1)
-        # representation = self.represent(torch.cat([ torch.zeros(list(feature.shape[:-1]) + [2]).to(feature.device), highwayrep, gpsrep, weekrep, daterep, timerep], dim=-1))
+        if "timeafter" in args.identify:
+            # print("timeafter")
+            representation = self.represent(torch.cat([feature[..., 1:3], highwayrep, gpsrep], dim=-1))
+            representation = torch.cat([representation, feature[...,10:], weekrep, daterep, timerep], dim = -1)
+        else:
+            if "nolength" in args.identify:
+                # print("nolength")
+                representation = self.represent(torch.cat([ torch.zeros(list(feature.shape[:-1]) + [2]).to(feature.device), highwayrep, gpsrep, weekrep, daterep, timerep], dim=-1))
+            else:
+                representation = self.represent(torch.cat([feature[..., 1:3], highwayrep, gpsrep, weekrep, daterep, timerep], dim=-1))
 
-        representation = torch.cat([representation, feature[...,10:]], dim = -1)
-        # representation = self.represent(representation)
-        # representation = torch.cat([representation, torch.zeros(list(feature.shape[:-1]) + [32]).to(feature.device)], dim = -1)
-        # representation = torch.cat([representation, feature[...,10:], weekrep, daterep, timerep], dim = -1)
+            if "nosgembed" in args.identify:
+                # print("nosgembed")
+                representation = torch.cat([representation, torch.zeros(list(feature.shape[:-1]) + [32]).to(feature.device)], dim = -1)
+            else:
+                representation = torch.cat([representation, feature[...,10:]], dim = -1)
+
+
 
         # representation = F.elu(self.conv(representation.permute(0, 2, 1))).permute(0, 2, 1)
         # lens = lens-2

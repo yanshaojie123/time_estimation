@@ -52,9 +52,15 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
                         # loss = loss_func(outputs, truth_data)
 
                         if phase == 'train':
-                            optimizer.zero_grad()
-                            loss.backward()
-                            optimizer.step()
+                            if torch.isnan(loss):
+                                print("=============LOSS NAN============")
+                                print(features)
+                                print(truth_data)
+                                print(outputs)
+                            else:
+                                optimizer.zero_grad()
+                                loss.backward()
+                                optimizer.step()
 
                     targets.append(truth_data.cpu().numpy())
                     with torch.no_grad():
@@ -78,6 +84,12 @@ def train_model(model: nn.Module, data_loaders: Dict[str, DataLoader],
                                            targets.reshape(targets.shape[0], -1), args, plot=epoch % 5 == 0, **kwargs)
                 # print(3)
                 writer.add_scalars(f'score/{phase}', scores, global_step=epoch)
+                with open(model_folder+"/output.txt", "a") as f:
+                    f.write(f'{phase} epoch: {epoch}, {phase} loss: {running_loss[phase] / steps}\n')
+                    f.write(str(scores))
+                    f.write('\n')
+                    f.write(str(time.time()))
+                    f.write("\n\n")
                 print(scores)
                 # if phase == 'val' and scores['RMSE'] < best_rmse:
                 if phase == 'val' and scores['pearr'] > best_pcc:
